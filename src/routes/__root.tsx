@@ -78,14 +78,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "TapTrack • Beer Bar POS & Business Manager" },
+      {
+        name: "description",
+        content:
+          "TapTrack helps beer bars manage taps, keg inventory, POS billing, customer tabs, suppliers, expenses and profit reports.",
+      },
+      { name: "author", content: "TapTrack" },
+      { property: "og:title", content: "TapTrack • Beer Bar POS & Business Manager" },
+      {
+        property: "og:description",
+        content:
+          "Run your beer bar with TapTrack: tap inventory, POS, billing, tabs, suppliers, expenses and profit insights.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
