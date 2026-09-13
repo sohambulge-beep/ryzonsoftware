@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789308882825,
+      "tag": "0000_create_profiles_table_and_auth_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789308905063,
+      "tag": "0001_revoke_function_execution_from_public",
+      "breakpoints": true
+    }
+  ]
+}

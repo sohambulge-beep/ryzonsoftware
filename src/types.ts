@@ -1,0 +1,125 @@
+export interface Settings {
+  barName: string;
+  taxRate: number;
+  currency: string;
+}
+
+export interface Tap {
+  id: string;
+  tapNumber: number;
+  name: string;
+  brewery: string;
+  style: string;
+  abv: number;
+  costPerLiter: number;
+  pricePerPint: number;
+  currentLiters: number;
+  capacityLiters: number;
+  supplierId: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact: string;
+  phone: string;
+  email: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  tabLimit: number;
+  currentBalance: number;
+  totalSpent: number;
+}
+
+export interface Purchase {
+  id: string;
+  supplierId: string;
+  beerId: string;
+  kegQty: number;
+  litersAdded: number;
+  costPerLiter: number;
+  totalCost: number;
+  date: string;
+  status: string;
+}
+
+export interface InvoiceItem {
+  beerId: string;
+  beerName: string;
+  qty: number;
+  unitPrice: number;
+  litersTotal: number;
+  costTotal: number;
+  total: number;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNo: string;
+  customerId: string;
+  customerName: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  paidAmount: number;
+  balanceDue: number;
+  paymentMethod: string;
+  status: 'Paid' | 'Unpaid' | 'Partial';
+  timestamp: string;
+}
+
+export interface Payment {
+  id: string;
+  receiptNo: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  paymentMethod: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  paymentMethod: string;
+  date: string;
+}
+
+export interface CartItem {
+  beerId: string;
+  beerName: string;
+  qty: number;
+  unitPrice: number;
+  litersTotal: number;
+  costTotal: number;
+  total: number;
+}
+
+export interface AppData {
+  settings: Settings;
+  taps: Tap[];
+  suppliers: Supplier[];
+  customers: Customer[];
+  purchases: Purchase[];
+  invoices: Invoice[];
+  payments: Payment[];
+  expenses: Expense[];
+}
+
+export type ViewId =
+  | 'dashboard' | 'pos' | 'billing' | 'customers' | 'expenses'
+  | 'inventory' | 'suppliers' | 'payments' | 'profitloss'
+  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings';
+
+export type ModalId =
+  | 'purchase' | 'supplier' | 'payment' | 'customer' | 'beer'
+  | 'expense' | 'invoiceView';
