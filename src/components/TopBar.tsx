@@ -18,6 +18,7 @@ const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   profitloss: { title: 'Profit & Loss Statement', subtitle: 'Gross margin, product cost (COGS), operating expenses and net profit' },
   reports: { title: 'Business Reports & Analytics', subtitle: 'Sales, profit, expense, and stock reports with daily/monthly filters' },
   settings: { title: 'Settings', subtitle: 'Manage your subscription plan and feature access' },
+  staff: { title: 'Staff Management', subtitle: 'Profiles, attendance, shift roster, salary, approvals and activity log' },
   backup: { title: 'Backup & Restore', subtitle: 'Export or restore complete TapTrack database and JSON configuration' },
 };
 

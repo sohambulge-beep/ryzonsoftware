@@ -15,6 +15,13 @@
       "when": 1789308905063,
       "tag": "0001_revoke_function_execution_from_public",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789309664176,
+      "tag": "0002_create_staff_module",
+      "breakpoints": true
     }
   ]
 }

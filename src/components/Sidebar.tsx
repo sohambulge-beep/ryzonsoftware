@@ -17,6 +17,7 @@ const NAV_ITEMS: {
       { id: 'customers', label: 'Customers & Tabs', icon: 'fa-solid fa-users' },
       { id: 'expenses', label: 'Expenses', icon: 'fa-solid fa-money-bill-wave' },
       { id: 'inventory', label: 'Stock & Kegs', icon: 'fa-solid fa-boxes-stacked' },
+      { id: 'staff', label: 'Staff', icon: 'fa-solid fa-user-tie', iconClass: 'text-amber-400' },
     ],
   },
   {

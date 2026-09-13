@@ -118,7 +118,7 @@ export interface AppData {
 export type ViewId =
   | 'dashboard' | 'pos' | 'billing' | 'customers' | 'expenses'
   | 'inventory' | 'suppliers' | 'payments' | 'profitloss'
-  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings';
+  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings' | 'staff';
 
 export type ModalId =
   | 'purchase' | 'supplier' | 'payment' | 'customer' | 'beer'
