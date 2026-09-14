@@ -251,9 +251,9 @@ export function InsightsView() {
                 <div key={h.hour} className="flex-1 flex flex-col justify-end group relative" title={`${h.label}: ${fmtMoney(h.revenue)} (${h.orders} orders)`}>
                   <div
                     className={`rounded-t transition-all ${
-                      ins.peakHour?.hour === h.hour ? 'bg-amber-400' : h.revenue > 0 ? 'bg-amber-600/60' : 'bg-zinc-800'
+                      ins.peakHour?.hour === h.hour ? 'bg-amber-400' : h.revenue > 0 ? 'bg-amber-600/70' : 'bg-zinc-800'
                     }`}
-                    style={{ height: `${Math.max(3, (h.revenue / maxHourRevenue) * 100)}%` }}
+                    style={{ height: `${h.revenue > 0 ? Math.max(12, (h.revenue / maxHourRevenue) * 100) : 6}%` }}
                   />
                 </div>
               ))}
