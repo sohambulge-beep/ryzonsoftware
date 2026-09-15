@@ -82,6 +82,38 @@ export interface Invoice {
   paymentMethod: string;
   status: 'Paid' | 'Unpaid' | 'Partial';
   timestamp: string;
+  /** GST breakdown, present only when GST billing was on for this sale. */
+  gst?: InvoiceGst;
+}
+
+export interface InvoiceGstLine {
+  beerId: string;
+  beerName: string;
+  hsnSac: string;
+  qty: number;
+  unitPrice: number;
+  taxableValue: number;
+  gstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  lineTotal: number;
+}
+
+export interface InvoiceGst {
+  supplyType: 'B2B' | 'B2C';
+  isInterstate: boolean;
+  placeOfSupply: string;
+  sellerGstin: string;
+  buyerGstin: string;
+  taxableTotal: number;
+  cgstTotal: number;
+  sgstTotal: number;
+  igstTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  lines: InvoiceGstLine[];
+  einvoiceRequired: boolean;
 }
 
 export interface Payment {
