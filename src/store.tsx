@@ -403,6 +403,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               capacityLiters: data.capacityLiters ?? 50,
               costPerLiter: data.costPerLiter ?? 3.0,
               pricePerPint: data.pricePerPint ?? 7.0,
+              hsnCode: data.hsnCode ?? t.hsnCode,
+              gstRate: data.gstRate ?? t.gstRate,
             } : t
           ),
         };
@@ -419,6 +421,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         currentLiters: data.currentLiters ?? 0,
         capacityLiters: data.capacityLiters ?? 50,
         supplierId: prev.suppliers[0]?.id ?? '',
+        ...(data.hsnCode ? { hsnCode: data.hsnCode } : {}),
+        ...(typeof data.gstRate === 'number' ? { gstRate: data.gstRate } : {}),
       };
       return { ...prev, taps: [...prev.taps, newTap] };
     });
