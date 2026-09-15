@@ -20,6 +20,7 @@ import { OwnerDashboardView } from "@/views/OwnerDashboardView";
 import { InsightsView } from "@/views/InsightsView";
 import { SettingsView } from "@/views/SettingsView";
 import { StaffView } from "@/views/StaffView";
+import { GstView } from "@/views/GstView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";

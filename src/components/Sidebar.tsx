@@ -14,6 +14,7 @@ const NAV_ITEMS: {
       { id: 'dashboard', label: 'Dashboard', icon: 'fa-solid fa-gauge-high' },
       { id: 'pos', label: 'Point of Sale', icon: 'fa-solid fa-cash-register', iconClass: 'text-amber-400' },
       { id: 'billing', label: 'Invoices & Sales', icon: 'fa-solid fa-receipt' },
+      { id: 'gst', label: 'GST & e-Invoice', icon: 'fa-solid fa-file-invoice', iconClass: 'text-emerald-400' },
       { id: 'customers', label: 'Customers & Tabs', icon: 'fa-solid fa-users' },
       { id: 'expenses', label: 'Expenses', icon: 'fa-solid fa-money-bill-wave' },
       { id: 'inventory', label: 'Stock & Kegs', icon: 'fa-solid fa-boxes-stacked' },
