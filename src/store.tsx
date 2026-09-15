@@ -316,24 +316,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       const costPerPint = tap.costPerLiter * 0.5;
-      const subtotal = tap.pricePerPint;
-      const tax = Number((subtotal * prev.settings.taxRate).toFixed(2));
-      const total = Number((subtotal + tax).toFixed(2));
+      const lineItem = {
+        beerId: tap.id,
+        beerName: tap.name,
+        qty: 1,
+        unitPrice: tap.pricePerPint,
+        litersTotal: 0.5,
+        costTotal: costPerPint,
+        total: tap.pricePerPint,
+      };
+      const gst = buildInvoiceGst([lineItem], prev.taps, undefined);
+      const subtotal = gst ? gst.taxableTotal : tap.pricePerPint;
+      const tax = gst ? gst.taxTotal : Number((tap.pricePerPint * prev.settings.taxRate).toFixed(2));
+      const total = gst ? gst.grandTotal : Number((subtotal + tax).toFixed(2));
 
       const newInvoice: Invoice = {
         id: genId('inv'),
         invoiceNo: genInvoiceNo(),
         customerId: '',
         customerName: 'Walk-in Guest',
-        items: [{
-          beerId: tap.id,
-          beerName: tap.name,
-          qty: 1,
-          unitPrice: tap.pricePerPint,
-          litersTotal: 0.5,
-          costTotal: costPerPint,
-          total: subtotal,
-        }],
+        items: [lineItem],
         subtotal,
         tax,
         total,
@@ -342,6 +344,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         paymentMethod: 'Cash',
         status: 'Paid',
         timestamp: new Date().toISOString(),
+        ...(gst ? { gst } : {}),
       };
 
       return {
