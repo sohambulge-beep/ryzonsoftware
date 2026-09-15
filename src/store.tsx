@@ -239,9 +239,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const subtotal = cart.reduce((acc, i) => acc + i.total, 0);
-    const tax = Number((subtotal * db.settings.taxRate).toFixed(2));
-    const total = Number((subtotal + tax).toFixed(2));
+    const gst = buildInvoiceGst(cart, db.taps, custObj);
+    const subtotal = gst ? gst.taxableTotal : cart.reduce((acc, i) => acc + i.total, 0);
+    const tax = gst ? gst.taxTotal : Number((cart.reduce((acc, i) => acc + i.total, 0) * db.settings.taxRate).toFixed(2));
+    const total = gst ? gst.grandTotal : Number((subtotal + tax).toFixed(2));
+
 
     if (method === 'Tab' && custObj) {
       const projected = (custObj.currentBalance || 0) + total;
