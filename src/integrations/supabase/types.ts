@@ -14,6 +14,325 @@ export type Database = {
   }
   public: {
     Tables: {
+      gst_einvoice_logs: {
+        Row: {
+          action: string
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          gst_invoice_id: string | null
+          http_status: number | null
+          id: string
+          provider: string
+          request_payload: Json | null
+          response_payload: Json | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          gst_invoice_id?: string | null
+          http_status?: number | null
+          id?: string
+          provider?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          success?: boolean
+          user_id?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          gst_invoice_id?: string | null
+          http_status?: number | null
+          id?: string
+          provider?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gst_einvoice_logs_gst_invoice_id_fkey"
+            columns: ["gst_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "gst_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gst_invoice_items: {
+        Row: {
+          cess_amount: number
+          cgst_amount: number
+          created_at: string
+          description: string
+          discount: number
+          gst_invoice_id: string
+          gst_rate: number
+          hsn_sac: string
+          id: string
+          igst_amount: number
+          line_no: number
+          line_total: number
+          quantity: number
+          sgst_amount: number
+          taxable_value: number
+          unit: string
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          cess_amount?: number
+          cgst_amount?: number
+          created_at?: string
+          description?: string
+          discount?: number
+          gst_invoice_id: string
+          gst_rate?: number
+          hsn_sac?: string
+          id?: string
+          igst_amount?: number
+          line_no?: number
+          line_total?: number
+          quantity?: number
+          sgst_amount?: number
+          taxable_value?: number
+          unit?: string
+          unit_price?: number
+          user_id?: string
+        }
+        Update: {
+          cess_amount?: number
+          cgst_amount?: number
+          created_at?: string
+          description?: string
+          discount?: number
+          gst_invoice_id?: string
+          gst_rate?: number
+          hsn_sac?: string
+          id?: string
+          igst_amount?: number
+          line_no?: number
+          line_total?: number
+          quantity?: number
+          sgst_amount?: number
+          taxable_value?: number
+          unit?: string
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gst_invoice_items_gst_invoice_id_fkey"
+            columns: ["gst_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "gst_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gst_invoices: {
+        Row: {
+          ack_date: string | null
+          ack_no: string | null
+          attempt_count: number
+          buyer_address: string
+          buyer_gstin: string
+          buyer_name: string
+          buyer_state_code: string
+          cancel_reason: string | null
+          cancel_remark: string | null
+          cancelled_at: string | null
+          cess_total: number
+          cgst_total: number
+          created_at: string
+          einvoice_required: boolean
+          einvoice_status: Database["public"]["Enums"]["einvoice_status"]
+          grand_total: number
+          id: string
+          igst_total: number
+          invoice_date: string
+          invoice_no: string
+          invoice_timestamp: string
+          irn: string | null
+          is_interstate: boolean
+          last_attempt_at: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          local_invoice_id: string
+          place_of_supply: string
+          seller_gstin: string
+          seller_legal_name: string
+          seller_state_code: string
+          sgst_total: number
+          signed_invoice: string | null
+          signed_qr: string | null
+          supply_type: string
+          tax_total: number
+          taxable_total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ack_date?: string | null
+          ack_no?: string | null
+          attempt_count?: number
+          buyer_address?: string
+          buyer_gstin?: string
+          buyer_name?: string
+          buyer_state_code?: string
+          cancel_reason?: string | null
+          cancel_remark?: string | null
+          cancelled_at?: string | null
+          cess_total?: number
+          cgst_total?: number
+          created_at?: string
+          einvoice_required?: boolean
+          einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
+          grand_total?: number
+          id?: string
+          igst_total?: number
+          invoice_date?: string
+          invoice_no: string
+          invoice_timestamp?: string
+          irn?: string | null
+          is_interstate?: boolean
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          local_invoice_id: string
+          place_of_supply?: string
+          seller_gstin?: string
+          seller_legal_name?: string
+          seller_state_code?: string
+          sgst_total?: number
+          signed_invoice?: string | null
+          signed_qr?: string | null
+          supply_type?: string
+          tax_total?: number
+          taxable_total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ack_date?: string | null
+          ack_no?: string | null
+          attempt_count?: number
+          buyer_address?: string
+          buyer_gstin?: string
+          buyer_name?: string
+          buyer_state_code?: string
+          cancel_reason?: string | null
+          cancel_remark?: string | null
+          cancelled_at?: string | null
+          cess_total?: number
+          cgst_total?: number
+          created_at?: string
+          einvoice_required?: boolean
+          einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
+          grand_total?: number
+          id?: string
+          igst_total?: number
+          invoice_date?: string
+          invoice_no?: string
+          invoice_timestamp?: string
+          irn?: string | null
+          is_interstate?: boolean
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          local_invoice_id?: string
+          place_of_supply?: string
+          seller_gstin?: string
+          seller_legal_name?: string
+          seller_state_code?: string
+          sgst_total?: number
+          signed_invoice?: string | null
+          signed_qr?: string | null
+          supply_type?: string
+          tax_total?: number
+          taxable_total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gst_settings: {
+        Row: {
+          address_line1: string
+          address_line2: string
+          city: string
+          created_at: string
+          default_gst_rate: number
+          default_hsn: string
+          einvoice_applicable: boolean
+          einvoice_mode: string
+          einvoice_threshold: number
+          gst_enabled: boolean
+          gstin: string
+          id: string
+          legal_name: string
+          pincode: string
+          place_of_supply: string
+          state_code: string
+          state_name: string
+          trade_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line1?: string
+          address_line2?: string
+          city?: string
+          created_at?: string
+          default_gst_rate?: number
+          default_hsn?: string
+          einvoice_applicable?: boolean
+          einvoice_mode?: string
+          einvoice_threshold?: number
+          gst_enabled?: boolean
+          gstin?: string
+          id?: string
+          legal_name?: string
+          pincode?: string
+          place_of_supply?: string
+          state_code?: string
+          state_name?: string
+          trade_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string
+          city?: string
+          created_at?: string
+          default_gst_rate?: number
+          default_hsn?: string
+          einvoice_applicable?: boolean
+          einvoice_mode?: string
+          einvoice_threshold?: number
+          gst_enabled?: boolean
+          gstin?: string
+          id?: string
+          legal_name?: string
+          pincode?: string
+          place_of_supply?: string
+          state_code?: string
+          state_name?: string
+          trade_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           bar_name: string | null
@@ -376,6 +695,12 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"
+      einvoice_status:
+        | "not_required"
+        | "pending"
+        | "generated"
+        | "failed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -504,6 +829,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "manager", "staff"],
+      einvoice_status: [
+        "not_required",
+        "pending",
+        "generated",
+        "failed",
+        "cancelled",
+      ],
     },
   },
 } as const
