@@ -1,7 +1,96 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, Payment, Purchase, Settings } from './types';
+import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, InvoiceGst, Payment, Purchase, Settings } from './types';
 import { loadState, saveState, resetToSample, clearAllData } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
+import {
+  computeGst,
+  evaluateEInvoiceApplicability,
+  isInterstateSupply,
+  readCachedGstSettings,
+  resolveGstRate,
+  resolveHsn,
+} from './lib/gst';
+
+export interface CustomerInput {
+  id?: string;
+  name: string;
+  phone: string;
+  email: string;
+  tabLimit: number;
+  gstin?: string;
+  legalName?: string;
+  billingAddress?: string;
+  stateName?: string;
+  stateCode?: string;
+}
+
+/**
+ * Builds the GST breakdown for a sale when GST billing is switched on.
+ * Returns null when GST is off, so the existing simple tax flow is untouched.
+ */
+function buildInvoiceGst(
+  items: CartItem[],
+  taps: Tap[],
+  customer: Customer | undefined,
+): InvoiceGst | null {
+  const settings = readCachedGstSettings();
+  if (!settings.gstEnabled) return null;
+
+  const buyerGstin = (customer?.gstin ?? '').trim().toUpperCase();
+  const buyerStateCode = (customer?.stateCode ?? '').trim();
+  const placeOfSupply = buyerStateCode || settings.placeOfSupply || settings.stateCode;
+  const isInterstate = isInterstateSupply(settings.stateCode, placeOfSupply);
+  const supplyType: 'B2B' | 'B2C' = buyerGstin ? 'B2B' : 'B2C';
+
+  const breakup = computeGst(
+    items.map(item => {
+      const tap = taps.find(t => t.id === item.beerId);
+      return {
+        description: item.beerName,
+        hsnSac: resolveHsn(tap?.hsnCode, settings),
+        quantity: item.qty,
+        unitPrice: item.unitPrice,
+        gstRate: resolveGstRate(tap?.gstRate, settings),
+        unit: 'NOS',
+      };
+    }),
+    { isInterstate, placeOfSupply, supplyType },
+  );
+
+  const applicability = evaluateEInvoiceApplicability({
+    settings,
+    buyerGstin,
+    invoiceTotal: breakup.grandTotal,
+  });
+
+  return {
+    supplyType,
+    isInterstate,
+    placeOfSupply,
+    sellerGstin: settings.gstin,
+    buyerGstin,
+    taxableTotal: breakup.taxableTotal,
+    cgstTotal: breakup.cgstTotal,
+    sgstTotal: breakup.sgstTotal,
+    igstTotal: breakup.igstTotal,
+    taxTotal: breakup.taxTotal,
+    grandTotal: breakup.grandTotal,
+    einvoiceRequired: applicability.required,
+    lines: breakup.lines.map((line, i) => ({
+      beerId: items[i]?.beerId ?? '',
+      beerName: line.description,
+      hsnSac: line.hsnSac,
+      qty: line.quantity,
+      unitPrice: line.unitPrice,
+      taxableValue: line.taxableValue,
+      gstRate: line.gstRate,
+      cgstAmount: line.cgstAmount,
+      sgstAmount: line.sgstAmount,
+      igstAmount: line.igstAmount,
+      lineTotal: line.lineTotal,
+    })),
+  };
+}
 
 interface ModalState {
   id: ModalId | null;
@@ -23,7 +112,7 @@ interface StoreContextValue {
   cartCustomerId: string;
   processCheckout: (method: 'Cash' | 'Card' | 'Tab') => string | null;
   quickPour: (tapId: string) => void;
-  saveCustomer: (data: { id?: string; name: string; phone: string; email: string; tabLimit: number }) => void;
+  saveCustomer: (data: CustomerInput) => void;
   saveBeer: (data: Partial<Tap> & { name: string; tapNumber: number }) => void;
   saveSupplier: (data: Omit<Supplier, 'id'>) => void;
   saveExpense: (data: { title: string; category: string; amount: number; paymentMethod: string }) => void;
