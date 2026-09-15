@@ -266,7 +266,7 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
       provider: provider.name,
       http_status: result.httpStatus ?? null,
       success: result.success,
-      request_payload: payload,
+      request_payload: payload as never,
       response_payload: (result.rawResponse ?? null) as never,
       error_code: result.errorCode ?? null,
       error_message: result.errorMessage ?? null,
