@@ -16,6 +16,10 @@ export interface Tap {
   currentLiters: number;
   capacityLiters: number;
   supplierId: string;
+  /** GST: HSN/SAC code for this item (optional — falls back to the business default). */
+  hsnCode?: string;
+  /** GST: applicable GST rate in percent (optional — falls back to the business default). */
+  gstRate?: number;
 }
 
 export interface Supplier {
@@ -34,6 +38,12 @@ export interface Customer {
   tabLimit: number;
   currentBalance: number;
   totalSpent: number;
+  /** GST billing details (optional — blank for walk-in / unregistered customers). */
+  gstin?: string;
+  legalName?: string;
+  billingAddress?: string;
+  stateName?: string;
+  stateCode?: string;
 }
 
 export interface Purchase {
