@@ -270,6 +270,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paymentMethod: method,
       status: isPaid ? 'Paid' : 'Unpaid',
       timestamp: new Date().toISOString(),
+      ...(gst ? { gst } : {}),
     };
 
     setDb(prev => {
