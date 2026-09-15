@@ -16,6 +16,10 @@ export interface Tap {
   currentLiters: number;
   capacityLiters: number;
   supplierId: string;
+  /** GST: HSN/SAC code for this item (optional — falls back to the business default). */
+  hsnCode?: string;
+  /** GST: applicable GST rate in percent (optional — falls back to the business default). */
+  gstRate?: number;
 }
 
 export interface Supplier {
@@ -34,6 +38,12 @@ export interface Customer {
   tabLimit: number;
   currentBalance: number;
   totalSpent: number;
+  /** GST billing details (optional — blank for walk-in / unregistered customers). */
+  gstin?: string;
+  legalName?: string;
+  billingAddress?: string;
+  stateName?: string;
+  stateCode?: string;
 }
 
 export interface Purchase {
@@ -72,6 +82,38 @@ export interface Invoice {
   paymentMethod: string;
   status: 'Paid' | 'Unpaid' | 'Partial';
   timestamp: string;
+  /** GST breakdown, present only when GST billing was on for this sale. */
+  gst?: InvoiceGst;
+}
+
+export interface InvoiceGstLine {
+  beerId: string;
+  beerName: string;
+  hsnSac: string;
+  qty: number;
+  unitPrice: number;
+  taxableValue: number;
+  gstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  lineTotal: number;
+}
+
+export interface InvoiceGst {
+  supplyType: 'B2B' | 'B2C';
+  isInterstate: boolean;
+  placeOfSupply: string;
+  sellerGstin: string;
+  buyerGstin: string;
+  taxableTotal: number;
+  cgstTotal: number;
+  sgstTotal: number;
+  igstTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  lines: InvoiceGstLine[];
+  einvoiceRequired: boolean;
 }
 
 export interface Payment {
@@ -118,7 +160,7 @@ export interface AppData {
 export type ViewId =
   | 'dashboard' | 'pos' | 'billing' | 'customers' | 'expenses'
   | 'inventory' | 'suppliers' | 'payments' | 'profitloss'
-  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings' | 'staff';
+  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings' | 'staff' | 'gst';
 
 export type ModalId =
   | 'purchase' | 'supplier' | 'payment' | 'customer' | 'beer'

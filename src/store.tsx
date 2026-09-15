@@ -1,7 +1,96 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, Payment, Purchase, Settings } from './types';
+import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, InvoiceGst, Payment, Purchase, Settings } from './types';
 import { loadState, saveState, resetToSample, clearAllData } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
+import {
+  computeGst,
+  evaluateEInvoiceApplicability,
+  isInterstateSupply,
+  readCachedGstSettings,
+  resolveGstRate,
+  resolveHsn,
+} from './lib/gst';
+
+export interface CustomerInput {
+  id?: string;
+  name: string;
+  phone: string;
+  email: string;
+  tabLimit: number;
+  gstin?: string;
+  legalName?: string;
+  billingAddress?: string;
+  stateName?: string;
+  stateCode?: string;
+}
+
+/**
+ * Builds the GST breakdown for a sale when GST billing is switched on.
+ * Returns null when GST is off, so the existing simple tax flow is untouched.
+ */
+function buildInvoiceGst(
+  items: CartItem[],
+  taps: Tap[],
+  customer: Customer | undefined,
+): InvoiceGst | null {
+  const settings = readCachedGstSettings();
+  if (!settings.gstEnabled) return null;
+
+  const buyerGstin = (customer?.gstin ?? '').trim().toUpperCase();
+  const buyerStateCode = (customer?.stateCode ?? '').trim();
+  const placeOfSupply = buyerStateCode || settings.placeOfSupply || settings.stateCode;
+  const isInterstate = isInterstateSupply(settings.stateCode, placeOfSupply);
+  const supplyType: 'B2B' | 'B2C' = buyerGstin ? 'B2B' : 'B2C';
+
+  const breakup = computeGst(
+    items.map(item => {
+      const tap = taps.find(t => t.id === item.beerId);
+      return {
+        description: item.beerName,
+        hsnSac: resolveHsn(tap?.hsnCode, settings),
+        quantity: item.qty,
+        unitPrice: item.unitPrice,
+        gstRate: resolveGstRate(tap?.gstRate, settings),
+        unit: 'NOS',
+      };
+    }),
+    { isInterstate, placeOfSupply, supplyType },
+  );
+
+  const applicability = evaluateEInvoiceApplicability({
+    settings,
+    buyerGstin,
+    invoiceTotal: breakup.grandTotal,
+  });
+
+  return {
+    supplyType,
+    isInterstate,
+    placeOfSupply,
+    sellerGstin: settings.gstin,
+    buyerGstin,
+    taxableTotal: breakup.taxableTotal,
+    cgstTotal: breakup.cgstTotal,
+    sgstTotal: breakup.sgstTotal,
+    igstTotal: breakup.igstTotal,
+    taxTotal: breakup.taxTotal,
+    grandTotal: breakup.grandTotal,
+    einvoiceRequired: applicability.required,
+    lines: breakup.lines.map((line, i) => ({
+      beerId: items[i]?.beerId ?? '',
+      beerName: line.description,
+      hsnSac: line.hsnSac,
+      qty: line.quantity,
+      unitPrice: line.unitPrice,
+      taxableValue: line.taxableValue,
+      gstRate: line.gstRate,
+      cgstAmount: line.cgstAmount,
+      sgstAmount: line.sgstAmount,
+      igstAmount: line.igstAmount,
+      lineTotal: line.lineTotal,
+    })),
+  };
+}
 
 interface ModalState {
   id: ModalId | null;
@@ -23,7 +112,7 @@ interface StoreContextValue {
   cartCustomerId: string;
   processCheckout: (method: 'Cash' | 'Card' | 'Tab') => string | null;
   quickPour: (tapId: string) => void;
-  saveCustomer: (data: { id?: string; name: string; phone: string; email: string; tabLimit: number }) => void;
+  saveCustomer: (data: CustomerInput) => void;
   saveBeer: (data: Partial<Tap> & { name: string; tapNumber: number }) => void;
   saveSupplier: (data: Omit<Supplier, 'id'>) => void;
   saveExpense: (data: { title: string; category: string; amount: number; paymentMethod: string }) => void;
@@ -150,9 +239,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const subtotal = cart.reduce((acc, i) => acc + i.total, 0);
-    const tax = Number((subtotal * db.settings.taxRate).toFixed(2));
-    const total = Number((subtotal + tax).toFixed(2));
+    const gst = buildInvoiceGst(cart, db.taps, custObj);
+    const subtotal = gst ? gst.taxableTotal : cart.reduce((acc, i) => acc + i.total, 0);
+    const tax = gst ? gst.taxTotal : Number((cart.reduce((acc, i) => acc + i.total, 0) * db.settings.taxRate).toFixed(2));
+    const total = gst ? gst.grandTotal : Number((subtotal + tax).toFixed(2));
+
 
     if (method === 'Tab' && custObj) {
       const projected = (custObj.currentBalance || 0) + total;
@@ -179,6 +270,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paymentMethod: method,
       status: isPaid ? 'Paid' : 'Unpaid',
       timestamp: new Date().toISOString(),
+      ...(gst ? { gst } : {}),
     };
 
     setDb(prev => {
@@ -224,24 +316,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       const costPerPint = tap.costPerLiter * 0.5;
-      const subtotal = tap.pricePerPint;
-      const tax = Number((subtotal * prev.settings.taxRate).toFixed(2));
-      const total = Number((subtotal + tax).toFixed(2));
+      const lineItem = {
+        beerId: tap.id,
+        beerName: tap.name,
+        qty: 1,
+        unitPrice: tap.pricePerPint,
+        litersTotal: 0.5,
+        costTotal: costPerPint,
+        total: tap.pricePerPint,
+      };
+      const gst = buildInvoiceGst([lineItem], prev.taps, undefined);
+      const subtotal = gst ? gst.taxableTotal : tap.pricePerPint;
+      const tax = gst ? gst.taxTotal : Number((tap.pricePerPint * prev.settings.taxRate).toFixed(2));
+      const total = gst ? gst.grandTotal : Number((subtotal + tax).toFixed(2));
 
       const newInvoice: Invoice = {
         id: genId('inv'),
         invoiceNo: genInvoiceNo(),
         customerId: '',
         customerName: 'Walk-in Guest',
-        items: [{
-          beerId: tap.id,
-          beerName: tap.name,
-          qty: 1,
-          unitPrice: tap.pricePerPint,
-          litersTotal: 0.5,
-          costTotal: costPerPint,
-          total: subtotal,
-        }],
+        items: [lineItem],
         subtotal,
         tax,
         total,
@@ -250,6 +344,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         paymentMethod: 'Cash',
         status: 'Paid',
         timestamp: new Date().toISOString(),
+        ...(gst ? { gst } : {}),
       };
 
       return {
@@ -260,13 +355,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const saveCustomer = useCallback((data: { id?: string; name: string; phone: string; email: string; tabLimit: number }) => {
+  const saveCustomer = useCallback((data: CustomerInput) => {
+    const gstFields = {
+      gstin: (data.gstin ?? '').trim().toUpperCase(),
+      legalName: data.legalName ?? '',
+      billingAddress: data.billingAddress ?? '',
+      stateName: data.stateName ?? '',
+      stateCode: data.stateCode ?? '',
+    };
     setDb(prev => {
       if (data.id) {
         return {
           ...prev,
           customers: prev.customers.map(c =>
-            c.id === data.id ? { ...c, name: data.name, phone: data.phone, email: data.email, tabLimit: data.tabLimit } : c
+            c.id === data.id ? { ...c, name: data.name, phone: data.phone, email: data.email, tabLimit: data.tabLimit, ...gstFields } : c
           ),
         };
       }
@@ -278,6 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         tabLimit: data.tabLimit,
         currentBalance: 0,
         totalSpent: 0,
+        ...gstFields,
       };
       return { ...prev, customers: [...prev.customers, newCustomer] };
     });
@@ -300,6 +403,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               capacityLiters: data.capacityLiters ?? 50,
               costPerLiter: data.costPerLiter ?? 3.0,
               pricePerPint: data.pricePerPint ?? 7.0,
+              hsnCode: data.hsnCode ?? t.hsnCode,
+              gstRate: data.gstRate ?? t.gstRate,
             } : t
           ),
         };
@@ -316,6 +421,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         currentLiters: data.currentLiters ?? 0,
         capacityLiters: data.capacityLiters ?? 50,
         supplierId: prev.suppliers[0]?.id ?? '',
+        ...(data.hsnCode ? { hsnCode: data.hsnCode } : {}),
+        ...(typeof data.gstRate === 'number' ? { gstRate: data.gstRate } : {}),
       };
       return { ...prev, taps: [...prev.taps, newTap] };
     });
