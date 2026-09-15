@@ -355,13 +355,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const saveCustomer = useCallback((data: { id?: string; name: string; phone: string; email: string; tabLimit: number }) => {
+  const saveCustomer = useCallback((data: CustomerInput) => {
+    const gstFields = {
+      gstin: (data.gstin ?? '').trim().toUpperCase(),
+      legalName: data.legalName ?? '',
+      billingAddress: data.billingAddress ?? '',
+      stateName: data.stateName ?? '',
+      stateCode: data.stateCode ?? '',
+    };
     setDb(prev => {
       if (data.id) {
         return {
           ...prev,
           customers: prev.customers.map(c =>
-            c.id === data.id ? { ...c, name: data.name, phone: data.phone, email: data.email, tabLimit: data.tabLimit } : c
+            c.id === data.id ? { ...c, name: data.name, phone: data.phone, email: data.email, tabLimit: data.tabLimit, ...gstFields } : c
           ),
         };
       }
@@ -373,6 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         tabLimit: data.tabLimit,
         currentBalance: 0,
         totalSpent: 0,
+        ...gstFields,
       };
       return { ...prev, customers: [...prev.customers, newCustomer] };
     });
