@@ -13,11 +13,27 @@ export function CustomerModal() {
   const [phone, setPhone] = useState(existing?.phone ?? '');
   const [email, setEmail] = useState(existing?.email ?? '');
   const [limit, setLimit] = useState(existing?.tabLimit ?? 200);
+  const [gstin, setGstin] = useState(existing?.gstin ?? '');
+  const [legalName, setLegalName] = useState(existing?.legalName ?? '');
+  const [billingAddress, setBillingAddress] = useState(existing?.billingAddress ?? '');
+  const [stateName, setStateName] = useState(existing?.stateName ?? '');
+  const [stateCode, setStateCode] = useState(existing?.stateCode ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    saveCustomer({ id: editId, name: name.trim(), phone: phone.trim(), email: email.trim(), tabLimit: Number(limit) || 200 });
+    saveCustomer({
+      id: editId,
+      name: name.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      tabLimit: Number(limit) || 200,
+      gstin: gstin.trim().toUpperCase(),
+      legalName: legalName.trim(),
+      billingAddress: billingAddress.trim(),
+      stateName: stateName.trim(),
+      stateCode: (stateCode || gstin.slice(0, 2)).trim(),
+    });
     closeModal();
   };
 

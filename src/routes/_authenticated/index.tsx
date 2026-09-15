@@ -84,6 +84,7 @@ function AppContent() {
     insights: <InsightsView />,
     settings: <SettingsView />,
     staff: <StaffView />,
+    gst: <GstView />,
   };
 
   const gate = VIEW_FEATURE[currentView];
