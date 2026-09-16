@@ -276,8 +276,10 @@ export function evaluateEInvoiceApplicability(args: {
   settings: GstBusinessSettings;
   buyerGstin: string;
   invoiceTotal: number;
+  customerType?: CustomerType;
 }): ApplicabilityResult {
   const { settings, buyerGstin, invoiceTotal } = args;
+  const customerType = resolveCustomerType(args.customerType, buyerGstin);
 
   if (!settings.gstEnabled) {
     return { required: false, status: 'not_required', reason: 'GST billing is switched off.' };
