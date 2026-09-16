@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { usePlan, PLAN_LABELS, FEATURE_LABELS, FEATURE_REQUIREMENT, type PlanId, type FeatureId } from '@/lib/plan';
+import { GstSettingsForm } from '@/components/gst/GstSettingsForm';
 
 const PLAN_PRICE: Record<PlanId, string> = {
   basic: '₹499/month',
