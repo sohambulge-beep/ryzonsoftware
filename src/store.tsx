@@ -66,6 +66,7 @@ function buildInvoiceGst(
     settings,
     buyerGstin,
     invoiceTotal: breakup.grandTotal,
+    customerType: supplyType,
   });
 
   return {
@@ -73,7 +74,16 @@ function buildInvoiceGst(
     isInterstate,
     placeOfSupply,
     sellerGstin: settings.gstin,
+    sellerLegalName: settings.legalName || settings.tradeName,
+    sellerAddress: [settings.addressLine1, settings.addressLine2, settings.city, settings.pincode]
+      .filter(Boolean)
+      .join(', '),
+    sellerStateCode: settings.stateCode,
     buyerGstin,
+    buyerName: customer?.legalName || customer?.name || 'Walk-in Guest',
+    buyerAddress: customer?.billingAddress ?? '',
+    buyerStateCode,
+    einvoiceReason: applicability.reason,
     taxableTotal: breakup.taxableTotal,
     cgstTotal: breakup.cgstTotal,
     sgstTotal: breakup.sgstTotal,
