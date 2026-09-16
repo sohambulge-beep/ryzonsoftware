@@ -10,7 +10,7 @@ const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   insights: { title: 'Business Insights & Analytics', subtitle: 'Automatic product performance, sales trends, and top customers' },
   pos: { title: 'Point of Sale (Tap Register)', subtitle: 'Tap to pour, manage tickets, cash out or add to customer tab' },
   billing: { title: 'Invoices & Sales Ledger', subtitle: 'Full transaction record with invoice printing and receipt generation' },
-  gst: { title: 'GST & e-Invoice', subtitle: 'Tax invoices, CGST/SGST/IGST breakdown and e-Invoice status' },
+  gst: { title: 'GST & e-Invoice Ready', subtitle: 'Tax invoices, CGST/SGST/IGST breakdown and e-Invoice Ready status' },
   customers: { title: 'Customer Directory & Tabs', subtitle: 'Patron balances, credit limits, and purchase histories' },
   expenses: { title: 'Bar Operating Expenses', subtitle: 'Log maintenance, CO2, utilities, and venue expenditures' },
   inventory: { title: 'Stock & Keg Line Management', subtitle: 'Live keg levels, draft calibration and pour monitoring' },

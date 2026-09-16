@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { useStore } from '@/store';
+import { GST_RATES, readCachedGstSettings } from '@/lib/gst';
 
 export function BeerModal() {
   const { modal, closeModal, saveBeer, db } = useStore();
@@ -17,6 +18,9 @@ export function BeerModal() {
   const [capacity, setCapacity] = useState(existing?.capacityLiters ?? 50);
   const [costL, setCostL] = useState(existing?.costPerLiter ?? 3.50);
   const [priceP, setPriceP] = useState(existing?.pricePerPint ?? 8.00);
+  const [gstDefaults] = useState(() => readCachedGstSettings());
+  const [hsnCode, setHsnCode] = useState(existing?.hsnCode ?? '');
+  const [gstRate, setGstRate] = useState<number | ''>(existing?.gstRate ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +36,8 @@ export function BeerModal() {
       capacityLiters: Number(capacity) || 50,
       costPerLiter: Number(costL) || 3,
       pricePerPint: Number(priceP) || 7,
+      hsnCode: hsnCode.trim(),
+      ...(gstRate === '' ? {} : { gstRate: Number(gstRate) }),
     });
     closeModal();
   };
@@ -84,6 +90,24 @@ export function BeerModal() {
           <div>
             <label className={labelClass}>Selling Price per Pint (500ml) (₹) *</label>
             <input type="number" value={priceP} onChange={e => setPriceP(Number(e.target.value))} min={0.5} step={0.25} className={`${inputClass} font-bold text-amber-400`} required />
+          </div>
+        </div>
+        <div className="pt-2 border-t border-zinc-800 space-y-3">
+          <p className="text-[0.65rem] uppercase tracking-wider text-emerald-400 font-semibold font-mono">GST Details (optional)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>HSN / SAC Code</label>
+              <input value={hsnCode} onChange={e => setHsnCode(e.target.value)} className={`${inputClass} font-mono`} placeholder={gstDefaults.defaultHsn || '22030000'} maxLength={8} />
+            </div>
+            <div>
+              <label className={labelClass}>GST Rate</label>
+              <select value={gstRate} onChange={e => setGstRate(e.target.value === '' ? '' : Number(e.target.value))} className={inputClass}>
+                <option value="">Use business default ({gstDefaults.defaultGstRate}%)</option>
+                {GST_RATES.map(r => (
+                  <option key={r} value={r}>{r}%</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">

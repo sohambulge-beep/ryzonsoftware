@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { usePlan, PLAN_LABELS, FEATURE_LABELS, FEATURE_REQUIREMENT, type PlanId, type FeatureId } from '@/lib/plan';
+import { GstSettingsForm } from '@/components/gst/GstSettingsForm';
 
 const PLAN_PRICE: Record<PlanId, string> = {
   basic: '₹499/month',
@@ -43,6 +44,8 @@ export function SettingsView() {
           </Link>
         </div>
       </div>
+
+      <GstSettingsForm />
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
         <h3 className="text-white font-bold text-base mb-4">Feature Access</h3>

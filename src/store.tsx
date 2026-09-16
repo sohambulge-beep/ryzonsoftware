@@ -3,12 +3,15 @@ import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expen
 import { loadState, saveState, resetToSample, clearAllData } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
 import {
+  alwaysInterstate,
   computeGst,
   evaluateEInvoiceApplicability,
   isInterstateSupply,
   readCachedGstSettings,
+  resolveCustomerType,
   resolveGstRate,
   resolveHsn,
+  type CustomerType,
 } from './lib/gst';
 
 export interface CustomerInput {
@@ -17,6 +20,7 @@ export interface CustomerInput {
   phone: string;
   email: string;
   tabLimit: number;
+  customerType?: CustomerType;
   gstin?: string;
   legalName?: string;
   billingAddress?: string;
@@ -39,8 +43,9 @@ function buildInvoiceGst(
   const buyerGstin = (customer?.gstin ?? '').trim().toUpperCase();
   const buyerStateCode = (customer?.stateCode ?? '').trim();
   const placeOfSupply = buyerStateCode || settings.placeOfSupply || settings.stateCode;
-  const isInterstate = isInterstateSupply(settings.stateCode, placeOfSupply);
-  const supplyType: 'B2B' | 'B2C' = buyerGstin ? 'B2B' : 'B2C';
+  const supplyType = resolveCustomerType(customer?.customerType, buyerGstin);
+  const isInterstate =
+    alwaysInterstate(supplyType) || isInterstateSupply(settings.stateCode, placeOfSupply);
 
   const breakup = computeGst(
     items.map(item => {
@@ -61,6 +66,7 @@ function buildInvoiceGst(
     settings,
     buyerGstin,
     invoiceTotal: breakup.grandTotal,
+    customerType: supplyType,
   });
 
   return {
@@ -68,7 +74,16 @@ function buildInvoiceGst(
     isInterstate,
     placeOfSupply,
     sellerGstin: settings.gstin,
+    sellerLegalName: settings.legalName || settings.tradeName,
+    sellerAddress: [settings.addressLine1, settings.addressLine2, settings.city, settings.pincode]
+      .filter(Boolean)
+      .join(', '),
+    sellerStateCode: settings.stateCode,
     buyerGstin,
+    buyerName: customer?.legalName || customer?.name || 'Walk-in Guest',
+    buyerAddress: customer?.billingAddress ?? '',
+    buyerStateCode,
+    einvoiceReason: applicability.reason,
     taxableTotal: breakup.taxableTotal,
     cgstTotal: breakup.cgstTotal,
     sgstTotal: breakup.sgstTotal,
@@ -357,6 +372,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const saveCustomer = useCallback((data: CustomerInput) => {
     const gstFields = {
+      customerType: data.customerType ?? ((data.gstin ?? '').trim() ? 'B2B' as const : 'B2C' as const),
       gstin: (data.gstin ?? '').trim().toUpperCase(),
       legalName: data.legalName ?? '',
       billingAddress: data.billingAddress ?? '',

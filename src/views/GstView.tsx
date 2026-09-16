@@ -58,7 +58,7 @@ export function GstView() {
             <i className="fa-solid fa-file-invoice text-amber-400" /> GST &amp; e-Invoice
           </h2>
           <p className="text-xs text-zinc-400">
-            Tax invoices with CGST/SGST/IGST, and e-Invoice preparation for registered (B2B) sales.
+            Tax invoices with CGST/SGST/IGST, and e-Invoice Ready records for registered (B2B / SEZ / Export) sales.
           </p>
         </div>
         <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full ${settings.gstEnabled ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-600/30' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>

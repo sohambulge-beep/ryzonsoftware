@@ -29,6 +29,7 @@ import { PaymentModal } from "@/modals/PaymentModal";
 import { ExpenseModal } from "@/modals/ExpenseModal";
 import { PurchaseModal } from "@/modals/PurchaseModal";
 import { InvoiceViewModal } from "@/modals/InvoiceViewModal";
+import { GstInvoiceSync } from "@/components/gst/GstInvoiceSync";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -109,6 +110,7 @@ function AppContent() {
       <InvoiceViewModal />
       <AIAssistant />
       <UpgradeDialog />
+      <GstInvoiceSync />
     </div>
   );
 }
