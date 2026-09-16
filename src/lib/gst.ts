@@ -294,17 +294,35 @@ export function evaluateEInvoiceApplicability(args: {
   if (!isValidGstin(settings.gstin)) {
     return { required: false, status: 'not_required', reason: 'Business GSTIN is missing or invalid.' };
   }
-  if (!buyerGstin || !isValidGstin(buyerGstin)) {
+  if (customerType === 'B2C') {
     return {
       required: false,
       status: 'not_required',
-      reason: 'B2C sale — e-Invoice is required only for registered (B2B) buyers.',
+      reason: 'B2C sale — e-Invoice is required only for registered (B2B/SEZ/Export) buyers.',
     };
   }
-  if (settings.einvoiceThreshold > 0 && invoiceTotal < 0) {
+  if (customerType !== 'EXPORT' && (!buyerGstin || !isValidGstin(buyerGstin))) {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'Buyer GSTIN is missing or invalid, so an e-Invoice cannot be raised.',
+    };
+  }
+  if (invoiceTotal < 0) {
     return { required: false, status: 'not_required', reason: 'Invoice value is not valid.' };
   }
-  return { required: true, status: 'pending', reason: 'B2B sale — e-Invoice is applicable.' };
+  if (settings.einvoiceThreshold > 0 && invoiceTotal < settings.einvoiceThreshold) {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'Invoice value is below the e-Invoice threshold set for this business.',
+    };
+  }
+  return {
+    required: true,
+    status: 'pending',
+    reason: `${CUSTOMER_TYPE_LABELS[customerType]} sale — e-Invoice is applicable.`,
+  };
 }
 
 /** IRN cancellation is allowed within 24 hours of the acknowledgement. */
