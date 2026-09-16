@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { useStore } from '@/store';
+import { GST_RATES, readCachedGstSettings } from '@/lib/gst';
 
 export function BeerModal() {
   const { modal, closeModal, saveBeer, db } = useStore();
@@ -17,6 +18,9 @@ export function BeerModal() {
   const [capacity, setCapacity] = useState(existing?.capacityLiters ?? 50);
   const [costL, setCostL] = useState(existing?.costPerLiter ?? 3.50);
   const [priceP, setPriceP] = useState(existing?.pricePerPint ?? 8.00);
+  const [gstDefaults] = useState(() => readCachedGstSettings());
+  const [hsnCode, setHsnCode] = useState(existing?.hsnCode ?? '');
+  const [gstRate, setGstRate] = useState<number | ''>(existing?.gstRate ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +36,8 @@ export function BeerModal() {
       capacityLiters: Number(capacity) || 50,
       costPerLiter: Number(costL) || 3,
       pricePerPint: Number(priceP) || 7,
+      hsnCode: hsnCode.trim(),
+      ...(gstRate === '' ? {} : { gstRate: Number(gstRate) }),
     });
     closeModal();
   };
