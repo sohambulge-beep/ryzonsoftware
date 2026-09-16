@@ -139,14 +139,21 @@ export function GstSettingsForm() {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-        <div className="text-xs font-semibold text-zinc-300 mb-2">e-Invoice connection</div>
+        <div className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-2">
+          Connect e-Invoice API
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+            e-Invoice Ready
+          </span>
+        </div>
         <select value={form.einvoiceMode} onChange={e => set('einvoiceMode', e.target.value === 'ready' ? 'ready' : 'off')} className={`${inputClass} sm:w-72`}>
           <option value="off">Off — no e-Invoice actions</option>
-          <option value="ready">Ready — prepare e-Invoices for an IRP/GSP account</option>
+          <option value="ready">e-Invoice Ready — prepare invoices for an IRP/GSP account</option>
         </select>
         <p className="text-[11px] text-zinc-500 mt-2">
-          No government e-Invoice provider is connected yet, so real IRNs cannot be issued. Invoices are prepared
-          and stored so they can be filed the moment an authorised provider is connected.
+          No authorised government e-Invoice provider is connected yet, so no IRN can be issued and none is ever
+          invented. Your invoices are prepared and stored in the correct government format, so they can be filed
+          the moment an authorised IRP/GSP account is connected. Connection details are held securely on the
+          server side only — never inside the app on your device.
         </p>
       </div>
 
