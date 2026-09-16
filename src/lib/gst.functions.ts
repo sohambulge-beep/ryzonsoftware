@@ -25,7 +25,7 @@ export interface RecordGstInvoiceInput {
   localInvoiceId: string;
   invoiceNo: string;
   invoiceTimestamp: string;
-  supplyType: 'B2B' | 'B2C';
+  supplyType: 'B2B' | 'B2C' | 'EXPORT' | 'SEZ' | 'GOVT';
   isInterstate: boolean;
   sellerGstin: string;
   sellerLegalName: string;

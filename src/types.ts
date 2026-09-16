@@ -102,7 +102,7 @@ export interface InvoiceGstLine {
 }
 
 export interface InvoiceGst {
-  supplyType: 'B2B' | 'B2C';
+  supplyType: 'B2B' | 'B2C' | 'EXPORT' | 'SEZ' | 'GOVT';
   isInterstate: boolean;
   placeOfSupply: string;
   sellerGstin: string;
@@ -115,6 +115,14 @@ export interface InvoiceGst {
   grandTotal: number;
   lines: InvoiceGstLine[];
   einvoiceRequired: boolean;
+  /** Plain-language reason shown on the invoice when no e-Invoice is needed. */
+  einvoiceReason?: string;
+  buyerName?: string;
+  buyerAddress?: string;
+  buyerStateCode?: string;
+  sellerLegalName?: string;
+  sellerAddress?: string;
+  sellerStateCode?: string;
 }
 
 export interface Payment {
