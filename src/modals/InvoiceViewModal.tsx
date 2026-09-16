@@ -26,8 +26,10 @@ export function InvoiceViewModal() {
   const open = modal.id === 'invoiceView';
   const invId = modal.data as string | undefined;
   const inv = invId ? db.invoices.find(i => i.id === invId) : undefined;
-  const { invoices: gstInvoices } = useGstInvoices();
-  const gstRecord = inv ? gstInvoices.find(g => g.local_invoice_id === inv.id) : undefined;
+  const gstInvoicesQuery = useGstInvoices();
+  const gstRecord = inv
+    ? (gstInvoicesQuery.data ?? []).find(g => g.local_invoice_id === inv.id)
+    : undefined;
 
   if (!inv) return <Modal open={open} onClose={closeModal} title="Invoice Receipt" icon="fa-solid fa-receipt"><div className="p-6 text-center text-zinc-400">Invoice not found.</div></Modal>;
 
