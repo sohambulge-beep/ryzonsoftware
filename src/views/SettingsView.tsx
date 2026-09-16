@@ -45,6 +45,8 @@ export function SettingsView() {
         </div>
       </div>
 
+      <GstSettingsForm />
+
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
         <h3 className="text-white font-bold text-base mb-4">Feature Access</h3>
         <div className="grid sm:grid-cols-2 gap-2">
