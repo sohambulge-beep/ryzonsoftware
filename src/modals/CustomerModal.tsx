@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { useStore } from '@/store';
+import { CUSTOMER_TYPES, type CustomerType } from '@/lib/gst';
 
 export function CustomerModal() {
   const { modal, closeModal, saveCustomer, db } = useStore();
@@ -13,6 +14,9 @@ export function CustomerModal() {
   const [phone, setPhone] = useState(existing?.phone ?? '');
   const [email, setEmail] = useState(existing?.email ?? '');
   const [limit, setLimit] = useState(existing?.tabLimit ?? 200);
+  const [customerType, setCustomerType] = useState<CustomerType>(
+    (existing?.customerType as CustomerType | undefined) ?? (existing?.gstin ? 'B2B' : 'B2C'),
+  );
   const [gstin, setGstin] = useState(existing?.gstin ?? '');
   const [legalName, setLegalName] = useState(existing?.legalName ?? '');
   const [billingAddress, setBillingAddress] = useState(existing?.billingAddress ?? '');
@@ -28,6 +32,7 @@ export function CustomerModal() {
       phone: phone.trim(),
       email: email.trim(),
       tabLimit: Number(limit) || 200,
+      customerType,
       gstin: gstin.trim().toUpperCase(),
       legalName: legalName.trim(),
       billingAddress: billingAddress.trim(),
