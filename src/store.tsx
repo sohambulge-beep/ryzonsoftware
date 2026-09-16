@@ -3,12 +3,15 @@ import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expen
 import { loadState, saveState, resetToSample, clearAllData } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
 import {
+  alwaysInterstate,
   computeGst,
   evaluateEInvoiceApplicability,
   isInterstateSupply,
   readCachedGstSettings,
+  resolveCustomerType,
   resolveGstRate,
   resolveHsn,
+  type CustomerType,
 } from './lib/gst';
 
 export interface CustomerInput {
@@ -17,6 +20,7 @@ export interface CustomerInput {
   phone: string;
   email: string;
   tabLimit: number;
+  customerType?: CustomerType;
   gstin?: string;
   legalName?: string;
   billingAddress?: string;
