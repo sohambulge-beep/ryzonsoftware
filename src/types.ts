@@ -39,6 +39,7 @@ export interface Customer {
   currentBalance: number;
   totalSpent: number;
   /** GST billing details (optional — blank for walk-in / unregistered customers). */
+  customerType?: 'B2C' | 'B2B' | 'EXPORT' | 'SEZ' | 'GOVT';
   gstin?: string;
   legalName?: string;
   billingAddress?: string;
