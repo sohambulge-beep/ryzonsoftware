@@ -372,6 +372,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const saveCustomer = useCallback((data: CustomerInput) => {
     const gstFields = {
+      customerType: data.customerType ?? ((data.gstin ?? '').trim() ? 'B2B' as const : 'B2C' as const),
       gstin: (data.gstin ?? '').trim().toUpperCase(),
       legalName: data.legalName ?? '',
       billingAddress: data.billingAddress ?? '',
