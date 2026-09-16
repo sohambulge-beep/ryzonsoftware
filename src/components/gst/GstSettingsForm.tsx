@@ -46,18 +46,27 @@ export function GstSettingsForm() {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
-        <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-200 cursor-pointer">
-          <span>GST billing enabled</span>
-          <input type="checkbox" checked={form.gstEnabled} onChange={e => set('gstEnabled', e.target.checked)} className="accent-amber-500 w-4 h-4" />
-        </label>
-        <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-200 cursor-pointer">
-          <span>e-Invoicing applicable</span>
-          <input type="checkbox" checked={form.einvoiceApplicable} onChange={e => set('einvoiceApplicable', e.target.checked)} className="accent-amber-500 w-4 h-4" />
-        </label>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+          <label className="flex items-center justify-between gap-3 text-sm text-zinc-200 cursor-pointer">
+            <span className="font-semibold">GST Billing — {form.gstEnabled ? 'ON' : 'OFF'}</span>
+            <input type="checkbox" checked={form.gstEnabled} onChange={e => set('gstEnabled', e.target.checked)} className="accent-amber-500 w-4 h-4" />
+          </label>
+          <p className="text-[11px] text-zinc-500 mt-1.5">
+            ON: every sale becomes a proper tax invoice with HSN codes and an automatic CGST/SGST or IGST split.
+            OFF: billing stays exactly as it is today with your simple sales tax rate.
+          </p>
+        </div>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+          <label className="flex items-center justify-between gap-3 text-sm text-zinc-200 cursor-pointer">
+            <span className="font-semibold">e-Invoicing applicable</span>
+            <input type="checkbox" checked={form.einvoiceApplicable} onChange={e => set('einvoiceApplicable', e.target.checked)} className="accent-amber-500 w-4 h-4" />
+          </label>
+          <p className="text-[11px] text-zinc-500 mt-1.5">
+            Switch this on only if your business crosses the turnover limit notified by the GST department.
+            e-Invoices are then prepared only for registered (B2B / SEZ / Export) sales.
+          </p>
+        </div>
       </div>
-      <p className="text-[11px] text-zinc-500 -mt-2">
-        Turn e-Invoicing on only if your business crosses the turnover limit notified by the GST department.
-      </p>
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
