@@ -43,8 +43,9 @@ function buildInvoiceGst(
   const buyerGstin = (customer?.gstin ?? '').trim().toUpperCase();
   const buyerStateCode = (customer?.stateCode ?? '').trim();
   const placeOfSupply = buyerStateCode || settings.placeOfSupply || settings.stateCode;
-  const isInterstate = isInterstateSupply(settings.stateCode, placeOfSupply);
-  const supplyType: 'B2B' | 'B2C' = buyerGstin ? 'B2B' : 'B2C';
+  const supplyType = resolveCustomerType(customer?.customerType, buyerGstin);
+  const isInterstate =
+    alwaysInterstate(supplyType) || isInterstateSupply(settings.stateCode, placeOfSupply);
 
   const breakup = computeGst(
     items.map(item => {
