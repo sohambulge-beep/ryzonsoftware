@@ -92,6 +92,24 @@ export function BeerModal() {
             <input type="number" value={priceP} onChange={e => setPriceP(Number(e.target.value))} min={0.5} step={0.25} className={`${inputClass} font-bold text-amber-400`} required />
           </div>
         </div>
+        <div className="pt-2 border-t border-zinc-800 space-y-3">
+          <p className="text-[0.65rem] uppercase tracking-wider text-emerald-400 font-semibold font-mono">GST Details (optional)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>HSN / SAC Code</label>
+              <input value={hsnCode} onChange={e => setHsnCode(e.target.value)} className={`${inputClass} font-mono`} placeholder={gstDefaults.defaultHsn || '22030000'} maxLength={8} />
+            </div>
+            <div>
+              <label className={labelClass}>GST Rate</label>
+              <select value={gstRate} onChange={e => setGstRate(e.target.value === '' ? '' : Number(e.target.value))} className={inputClass}>
+                <option value="">Use business default ({gstDefaults.defaultGstRate}%)</option>
+                {GST_RATES.map(r => (
+                  <option key={r} value={r}>{r}%</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={closeModal} className="bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 font-medium rounded-lg py-2 px-4 text-sm transition">Cancel</button>
           <button type="submit" className="bg-gradient-to-br from-amber-400 to-amber-600 text-zinc-900 font-semibold rounded-lg py-2 px-4 text-sm hover:brightness-110 transition">Save Tap Line</button>
