@@ -8,7 +8,40 @@
 
 export const GST_RATES = [0, 5, 12, 18, 28] as const;
 
-export type SupplyType = 'B2B' | 'B2C';
+export type SupplyType = 'B2B' | 'B2C' | 'EXPORT' | 'SEZ' | 'GOVT';
+
+/** Customer classification used to decide the supply type of a sale. */
+export type CustomerType = 'B2C' | 'B2B' | 'EXPORT' | 'SEZ' | 'GOVT';
+
+export const CUSTOMER_TYPES: { id: CustomerType; label: string; hint: string }[] = [
+  { id: 'B2C', label: 'B2C — Unregistered consumer', hint: 'Normal walk-in customer. No GSTIN needed.' },
+  { id: 'B2B', label: 'B2B — Registered business', hint: 'GST-registered buyer. GSTIN required.' },
+  { id: 'EXPORT', label: 'Export', hint: 'Supply outside India. Always treated as inter-state (IGST).' },
+  { id: 'SEZ', label: 'SEZ unit / developer', hint: 'Always treated as inter-state (IGST).' },
+  { id: 'GOVT', label: 'Government / PSU', hint: 'Government department or PSU buyer.' },
+];
+
+export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
+  B2C: 'B2C',
+  B2B: 'B2B',
+  EXPORT: 'Export',
+  SEZ: 'SEZ',
+  GOVT: 'Government',
+};
+
+/** Export and SEZ supplies are always inter-state, whatever the state codes say. */
+export function alwaysInterstate(type: CustomerType): boolean {
+  return type === 'EXPORT' || type === 'SEZ';
+}
+
+/** Falls back to B2B when a GSTIN is present and no explicit type was chosen. */
+export function resolveCustomerType(
+  type: CustomerType | undefined,
+  gstin: string | undefined,
+): CustomerType {
+  if (type) return type;
+  return (gstin ?? '').trim() ? 'B2B' : 'B2C';
+}
 
 export type EInvoiceStatus =
   | 'not_required'
