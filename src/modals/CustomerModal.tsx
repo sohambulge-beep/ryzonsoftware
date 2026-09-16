@@ -68,6 +68,17 @@ export function CustomerModal() {
         </div>
         <div className="pt-2 border-t border-zinc-800 space-y-3">
           <p className="text-[0.65rem] uppercase tracking-wider text-emerald-400 font-semibold font-mono">GST Billing Details (optional)</p>
+          <div>
+            <label className={labelClass}>Customer Type</label>
+            <select value={customerType} onChange={e => setCustomerType(e.target.value as CustomerType)} className={inputClass}>
+              {CUSTOMER_TYPES.map(t => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              {CUSTOMER_TYPES.find(t => t.id === customerType)?.hint}
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>GSTIN</label>
