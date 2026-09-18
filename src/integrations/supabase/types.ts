@@ -76,6 +76,7 @@ export type Database = {
           discount: number
           gst_invoice_id: string
           gst_rate: number
+          gst_rate_configured: boolean
           hsn_sac: string
           id: string
           igst_amount: number
@@ -96,6 +97,7 @@ export type Database = {
           discount?: number
           gst_invoice_id: string
           gst_rate?: number
+          gst_rate_configured?: boolean
           hsn_sac?: string
           id?: string
           igst_amount?: number
@@ -116,6 +118,7 @@ export type Database = {
           discount?: number
           gst_invoice_id?: string
           gst_rate?: number
+          gst_rate_configured?: boolean
           hsn_sac?: string
           id?: string
           igst_amount?: number
@@ -155,6 +158,7 @@ export type Database = {
           created_at: string
           einvoice_required: boolean
           einvoice_status: Database["public"]["Enums"]["einvoice_status"]
+          einvoice_validation_error: string | null
           grand_total: number
           id: string
           igst_total: number
@@ -196,6 +200,7 @@ export type Database = {
           created_at?: string
           einvoice_required?: boolean
           einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
+          einvoice_validation_error?: string | null
           grand_total?: number
           id?: string
           igst_total?: number
@@ -237,6 +242,7 @@ export type Database = {
           created_at?: string
           einvoice_required?: boolean
           einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
+          einvoice_validation_error?: string | null
           grand_total?: number
           id?: string
           igst_total?: number

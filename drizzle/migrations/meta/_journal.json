@@ -36,6 +36,13 @@
       "when": 1789712660830,
       "tag": "0004_add_gst_compliance_assessment",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789712704700,
+      "tag": "0005_track_gst_item_tax_configuration",
+      "breakpoints": true
     }
   ]
 }
