@@ -268,13 +268,19 @@ export type Database = {
         Row: {
           address_line1: string
           address_line2: string
+          applicability_assessed_at: string | null
+          applicability_rule_reference: string
+          applicability_rule_threshold: number
           city: string
           created_at: string
           default_gst_rate: number
           default_hsn: string
+          default_tax_confirmed: boolean
+          einvoice_applicability_status: string
           einvoice_applicable: boolean
           einvoice_mode: string
           einvoice_threshold: number
+          exemption_notes: string
           gst_enabled: boolean
           gstin: string
           id: string
@@ -283,20 +289,28 @@ export type Database = {
           place_of_supply: string
           state_code: string
           state_name: string
+          supplier_exemption_category: string
           trade_name: string
+          turnover_threshold_crossed: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           address_line1?: string
           address_line2?: string
+          applicability_assessed_at?: string | null
+          applicability_rule_reference?: string
+          applicability_rule_threshold?: number
           city?: string
           created_at?: string
           default_gst_rate?: number
           default_hsn?: string
+          default_tax_confirmed?: boolean
+          einvoice_applicability_status?: string
           einvoice_applicable?: boolean
           einvoice_mode?: string
           einvoice_threshold?: number
+          exemption_notes?: string
           gst_enabled?: boolean
           gstin?: string
           id?: string
@@ -305,20 +319,28 @@ export type Database = {
           place_of_supply?: string
           state_code?: string
           state_name?: string
+          supplier_exemption_category?: string
           trade_name?: string
+          turnover_threshold_crossed?: boolean
           updated_at?: string
           user_id?: string
         }
         Update: {
           address_line1?: string
           address_line2?: string
+          applicability_assessed_at?: string | null
+          applicability_rule_reference?: string
+          applicability_rule_threshold?: number
           city?: string
           created_at?: string
           default_gst_rate?: number
           default_hsn?: string
+          default_tax_confirmed?: boolean
+          einvoice_applicability_status?: string
           einvoice_applicable?: boolean
           einvoice_mode?: string
           einvoice_threshold?: number
+          exemption_notes?: string
           gst_enabled?: boolean
           gstin?: string
           id?: string
@@ -327,7 +349,9 @@ export type Database = {
           place_of_supply?: string
           state_code?: string
           state_name?: string
+          supplier_exemption_category?: string
           trade_name?: string
+          turnover_threshold_crossed?: boolean
           updated_at?: string
           user_id?: string
         }
