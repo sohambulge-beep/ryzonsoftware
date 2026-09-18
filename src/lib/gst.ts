@@ -223,7 +223,9 @@ export function resolveHsn(itemHsn: string | undefined, settings: GstBusinessSet
 export function resolveGstRate(itemRate: number | undefined, settings: GstBusinessSettings): number {
   return typeof itemRate === 'number' && !Number.isNaN(itemRate)
     ? itemRate
-    : settings.defaultGstRate;
+    : settings.defaultTaxConfirmed
+      ? settings.defaultGstRate
+      : 0;
 }
 
 /** Split a set of tax-exclusive lines into CGST/SGST or IGST and roll up totals. */
@@ -337,6 +339,20 @@ export function evaluateEInvoiceApplicability(args: {
       required: false,
       status: 'not_required',
       reason,
+    };
+  }
+  if (!settings.turnoverThresholdCrossed) {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'The configured turnover applicability condition has not been confirmed.',
+    };
+  }
+  if (settings.supplierExemptionCategory !== 'none') {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'The configured supplier exemption excludes e-Invoice generation.',
     };
   }
   if (!isValidGstin(settings.gstin)) {

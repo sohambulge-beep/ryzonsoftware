@@ -261,7 +261,7 @@ export function GstView() {
                         <td className="py-1.5 font-mono text-center">{item.hsn_sac || '—'}</td>
                         <td className="py-1.5 text-center font-mono">{Number(item.quantity)}</td>
                         <td className="py-1.5 text-right font-mono">{fmtMoney(Number(item.taxable_value))}</td>
-                        <td className="py-1.5 text-center font-mono">{Number(item.gst_rate)}%</td>
+                        <td className="py-1.5 text-center font-mono">{item.gst_rate_configured ? `${Number(item.gst_rate)}%` : 'Not set'}</td>
                         <td className="py-1.5 text-right font-mono">{fmtMoney(Number(item.cgst_amount) + Number(item.sgst_amount) + Number(item.igst_amount))}</td>
                         <td className="py-1.5 text-right font-mono font-bold">{fmtMoney(Number(item.line_total))}</td>
                       </tr>

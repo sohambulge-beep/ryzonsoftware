@@ -371,11 +371,19 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
     if (!provider.configured) {
       return { success: false, apiConnected: false, errorMessage: 'API Not Connected. No cancellation was submitted.' };
     }
-    const result = await provider.cancel({
+    const providerResult = await provider.cancel({
       irn: invoice.irn,
       reasonCode: data.reasonCode,
       remark: data.remark,
     });
+    const result = providerResult.success && !providerResult.cancelDate?.trim()
+      ? {
+          ...providerResult,
+          success: false,
+          errorCode: 'INCOMPLETE_PROVIDER_RESPONSE',
+          errorMessage: 'The provider returned an incomplete cancellation response. The IRN remains unchanged.',
+        }
+      : providerResult;
 
     await supabaseAdmin.from('gst_einvoice_logs').insert({
       user_id: context.userId,
@@ -397,7 +405,7 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
           einvoice_status: 'cancelled',
           cancel_reason: data.reasonCode,
           cancel_remark: data.remark,
-          cancelled_at: result.cancelDate ?? new Date().toISOString(),
+          cancelled_at: result.cancelDate,
         })
         .eq('id', invoice.id);
     } else {

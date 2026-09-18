@@ -118,7 +118,7 @@ export function InvoiceViewModal() {
                     <td className="py-1.5 text-center">{line.qty}</td>
                     <td className="py-1.5 text-right">{fmtMoney(line.unitPrice)}</td>
                     <td className="py-1.5 text-right">{fmtMoney(line.taxableValue)}</td>
-                    <td className="py-1.5 text-center">{line.gstRate}%</td>
+                    <td className="py-1.5 text-center">{line.gstRateConfigured ? `${line.gstRate}%` : 'Not set'}</td>
                     {gst.isInterstate ? (
                       <td className="py-1.5 text-right">{fmtMoney(line.igstAmount)}</td>
                     ) : (
