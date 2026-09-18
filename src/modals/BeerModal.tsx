@@ -97,12 +97,12 @@ export function BeerModal() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>HSN / SAC Code</label>
-              <input value={hsnCode} onChange={e => setHsnCode(e.target.value)} className={`${inputClass} font-mono`} placeholder={gstDefaults.defaultHsn || '22030000'} maxLength={8} />
+              <input value={hsnCode} onChange={e => setHsnCode(e.target.value)} className={`${inputClass} font-mono`} placeholder={gstDefaults.defaultHsn || 'Enter confirmed HSN / SAC'} maxLength={8} />
             </div>
             <div>
               <label className={labelClass}>GST Rate</label>
               <select value={gstRate} onChange={e => setGstRate(e.target.value === '' ? '' : Number(e.target.value))} className={inputClass}>
-                <option value="">Use business default ({gstDefaults.defaultGstRate}%)</option>
+                <option value="">{gstDefaults.defaultTaxConfirmed ? `Use confirmed business default (${gstDefaults.defaultGstRate}%)` : 'Not set — choose a rate'}</option>
                 {GST_RATES.map(r => (
                   <option key={r} value={r}>{r}%</option>
                 ))}

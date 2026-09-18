@@ -191,6 +191,7 @@ export function InvoiceViewModal() {
             ) : (
               <div className="text-zinc-600">{gst.einvoiceReason ?? 'No IRN has been issued for this invoice yet.'}</div>
             )}
+            <div className="mt-2 text-zinc-600">Saved in TapTrack only. This does not file a GST return or submit the invoice to GSTN/IRP.</div>
           </div>
 
           <div className="pt-3 border-t border-zinc-300 text-center text-[10px] text-zinc-500">
