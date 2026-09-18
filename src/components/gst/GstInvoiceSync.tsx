@@ -73,6 +73,7 @@ export function GstInvoiceSync() {
           discount: 0,
           taxableValue: line.taxableValue,
           gstRate: line.gstRate,
+          gstRateConfigured: line.gstRateConfigured,
           cgstAmount: line.cgstAmount,
           sgstAmount: line.sgstAmount,
           igstAmount: line.igstAmount,

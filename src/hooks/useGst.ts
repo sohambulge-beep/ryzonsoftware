@@ -35,10 +35,18 @@ function rowToSettings(row: SettingsRow): GstBusinessSettings {
     placeOfSupply: row.place_of_supply,
     gstEnabled: row.gst_enabled,
     einvoiceApplicable: row.einvoice_applicable,
+    einvoiceApplicabilityStatus: row.einvoice_applicability_status as GstBusinessSettings['einvoiceApplicabilityStatus'],
+    turnoverThresholdCrossed: row.turnover_threshold_crossed,
+    supplierExemptionCategory: row.supplier_exemption_category as GstBusinessSettings['supplierExemptionCategory'],
+    exemptionNotes: row.exemption_notes,
+    applicabilityAssessedAt: row.applicability_assessed_at,
+    applicabilityRuleThreshold: Number(row.applicability_rule_threshold),
+    applicabilityRuleReference: row.applicability_rule_reference,
     einvoiceMode: row.einvoice_mode === 'ready' ? 'ready' : 'off',
     einvoiceThreshold: Number(row.einvoice_threshold),
     defaultHsn: row.default_hsn,
-    defaultGstRate: Number(row.default_gst_rate),
+    defaultGstRate: row.default_tax_confirmed ? Number(row.default_gst_rate) : 0,
+    defaultTaxConfirmed: row.default_tax_confirmed,
   };
 }
 

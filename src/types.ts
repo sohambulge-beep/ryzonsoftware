@@ -95,6 +95,7 @@ export interface InvoiceGstLine {
   unitPrice: number;
   taxableValue: number;
   gstRate: number;
+  gstRateConfigured: boolean;
   cgstAmount: number;
   sgstAmount: number;
   igstAmount: number;
