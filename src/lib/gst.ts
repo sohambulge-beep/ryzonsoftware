@@ -8,6 +8,33 @@
 
 export const GST_RATES = [0, 5, 12, 18, 28] as const;
 
+export const EINVOICE_API_CONNECTED = false;
+
+export type EInvoiceApplicabilityStatus = 'needs_review' | 'applicable' | 'not_applicable' | 'exempt';
+
+export type SupplierExemptionCategory =
+  | 'none'
+  | 'bank_insurer_financial_institution'
+  | 'gta'
+  | 'passenger_transport'
+  | 'cinema_admission'
+  | 'sez_unit'
+  | 'government_local_authority'
+  | 'oidar_rule_14'
+  | 'other';
+
+export const SUPPLIER_EXEMPTIONS: { id: SupplierExemptionCategory; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'bank_insurer_financial_institution', label: 'Bank, insurer or financial institution' },
+  { id: 'gta', label: 'Goods Transport Agency' },
+  { id: 'passenger_transport', label: 'Passenger transport supplier' },
+  { id: 'cinema_admission', label: 'Cinema admission services' },
+  { id: 'sez_unit', label: 'SEZ unit (not SEZ developer)' },
+  { id: 'government_local_authority', label: 'Government department or local authority' },
+  { id: 'oidar_rule_14', label: 'Rule 14 OIDAR registrant' },
+  { id: 'other', label: 'Other confirmed exemption' },
+];
+
 export type SupplyType = 'B2B' | 'B2C' | 'EXPORT' | 'SEZ' | 'GOVT';
 
 /** Customer classification used to decide the supply type of a sale. */
@@ -71,11 +98,19 @@ export interface GstBusinessSettings {
   placeOfSupply: string;
   gstEnabled: boolean;
   einvoiceApplicable: boolean;
+  einvoiceApplicabilityStatus: EInvoiceApplicabilityStatus;
+  turnoverThresholdCrossed: boolean;
+  supplierExemptionCategory: SupplierExemptionCategory;
+  exemptionNotes: string;
+  applicabilityAssessedAt: string | null;
+  applicabilityRuleThreshold: number;
+  applicabilityRuleReference: string;
   /** 'off' = feature parked, 'ready' = structure active, awaiting an IRP/GSP connection. */
   einvoiceMode: 'off' | 'ready';
   einvoiceThreshold: number;
   defaultHsn: string;
   defaultGstRate: number;
+  defaultTaxConfirmed: boolean;
 }
 
 export const EMPTY_GST_SETTINGS: GstBusinessSettings = {
@@ -91,10 +126,18 @@ export const EMPTY_GST_SETTINGS: GstBusinessSettings = {
   placeOfSupply: '',
   gstEnabled: false,
   einvoiceApplicable: false,
+  einvoiceApplicabilityStatus: 'needs_review',
+  turnoverThresholdCrossed: false,
+  supplierExemptionCategory: 'none',
+  exemptionNotes: '',
+  applicabilityAssessedAt: null,
+  applicabilityRuleThreshold: 50000000,
+  applicabilityRuleReference: 'Notification 10/2023-Central Tax; verify current rules',
   einvoiceMode: 'off',
   einvoiceThreshold: 0,
   defaultHsn: '',
-  defaultGstRate: 5,
+  defaultGstRate: 0,
+  defaultTaxConfirmed: false,
 };
 
 export interface GstLineInput {
@@ -180,7 +223,9 @@ export function resolveHsn(itemHsn: string | undefined, settings: GstBusinessSet
 export function resolveGstRate(itemRate: number | undefined, settings: GstBusinessSettings): number {
   return typeof itemRate === 'number' && !Number.isNaN(itemRate)
     ? itemRate
-    : settings.defaultGstRate;
+    : settings.defaultTaxConfirmed
+      ? settings.defaultGstRate
+      : 0;
 }
 
 /** Split a set of tax-exclusive lines into CGST/SGST or IGST and roll up totals. */
@@ -275,20 +320,39 @@ export interface ApplicabilityResult {
 export function evaluateEInvoiceApplicability(args: {
   settings: GstBusinessSettings;
   buyerGstin: string;
-  invoiceTotal: number;
   customerType?: CustomerType;
+  lines: { hsnSac: string; gstRateConfigured: boolean }[];
 }): ApplicabilityResult {
-  const { settings, buyerGstin, invoiceTotal } = args;
+  const { settings, buyerGstin } = args;
   const customerType = resolveCustomerType(args.customerType, buyerGstin);
 
   if (!settings.gstEnabled) {
     return { required: false, status: 'not_required', reason: 'GST billing is switched off.' };
   }
-  if (!settings.einvoiceApplicable) {
+  if (settings.einvoiceApplicabilityStatus !== 'applicable') {
+    const reason = settings.einvoiceApplicabilityStatus === 'exempt'
+      ? 'Business is configured as exempt from e-Invoicing.'
+      : settings.einvoiceApplicabilityStatus === 'not_applicable'
+        ? 'e-Invoicing is configured as not applicable for this business.'
+        : 'e-Invoice applicability needs review and confirmation.';
     return {
       required: false,
       status: 'not_required',
-      reason: 'e-Invoicing is not applicable for this business.',
+      reason,
+    };
+  }
+  if (!settings.turnoverThresholdCrossed) {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'The configured turnover applicability condition has not been confirmed.',
+    };
+  }
+  if (settings.supplierExemptionCategory !== 'none') {
+    return {
+      required: false,
+      status: 'not_required',
+      reason: 'The configured supplier exemption excludes e-Invoice generation.',
     };
   }
   if (!isValidGstin(settings.gstin)) {
@@ -298,7 +362,7 @@ export function evaluateEInvoiceApplicability(args: {
     return {
       required: false,
       status: 'not_required',
-      reason: 'B2C sale — e-Invoice is required only for registered (B2B/SEZ/Export) buyers.',
+      reason: 'B2C sale — an IRN is not applicable.',
     };
   }
   if (customerType !== 'EXPORT' && (!buyerGstin || !isValidGstin(buyerGstin))) {
@@ -308,14 +372,11 @@ export function evaluateEInvoiceApplicability(args: {
       reason: 'Buyer GSTIN is missing or invalid, so an e-Invoice cannot be raised.',
     };
   }
-  if (invoiceTotal < 0) {
-    return { required: false, status: 'not_required', reason: 'Invoice value is not valid.' };
-  }
-  if (settings.einvoiceThreshold > 0 && invoiceTotal < settings.einvoiceThreshold) {
+  if (args.lines.some(line => !line.hsnSac.trim() || !line.gstRateConfigured)) {
     return {
       required: false,
       status: 'not_required',
-      reason: 'Invoice value is below the e-Invoice threshold set for this business.',
+      reason: 'Item HSN/SAC or GST rate needs confirmation before e-Invoice submission.',
     };
   }
   return {

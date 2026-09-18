@@ -47,8 +47,7 @@ function buildInvoiceGst(
   const isInterstate =
     alwaysInterstate(supplyType) || isInterstateSupply(settings.stateCode, placeOfSupply);
 
-  const breakup = computeGst(
-    items.map(item => {
+  const lineInputs = items.map(item => {
       const tap = taps.find(t => t.id === item.beerId);
       return {
         description: item.beerName,
@@ -58,15 +57,20 @@ function buildInvoiceGst(
         gstRate: resolveGstRate(tap?.gstRate, settings),
         unit: 'NOS',
       };
-    }),
+    });
+  const breakup = computeGst(
+    lineInputs,
     { isInterstate, placeOfSupply, supplyType },
   );
 
   const applicability = evaluateEInvoiceApplicability({
     settings,
     buyerGstin,
-    invoiceTotal: breakup.grandTotal,
     customerType: supplyType,
+    lines: lineInputs.map((line, index) => ({
+      hsnSac: line.hsnSac,
+      gstRateConfigured: typeof taps.find(t => t.id === items[index]?.beerId)?.gstRate === 'number' || settings.defaultTaxConfirmed,
+    })),
   });
 
   return {
@@ -99,6 +103,7 @@ function buildInvoiceGst(
       unitPrice: line.unitPrice,
       taxableValue: line.taxableValue,
       gstRate: line.gstRate,
+      gstRateConfigured: typeof taps.find(t => t.id === items[i]?.beerId)?.gstRate === 'number' || settings.defaultTaxConfirmed,
       cgstAmount: line.cgstAmount,
       sgstAmount: line.sgstAmount,
       igstAmount: line.igstAmount,

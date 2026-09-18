@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGstSettings, useSaveGstSettings } from '@/hooks/useGst';
-import { EMPTY_GST_SETTINGS, GST_RATES, isValidGstin, stateCodeFromGstin, type GstBusinessSettings } from '@/lib/gst';
+import { EMPTY_GST_SETTINGS, GST_RATES, SUPPLIER_EXEMPTIONS, isValidGstin, stateCodeFromGstin, type GstBusinessSettings } from '@/lib/gst';
 
 const inputClass =
   'w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-amber-500 transition';
@@ -16,7 +16,7 @@ export function GstSettingsForm() {
   useEffect(() => {
     if (!isLoading) setForm(settings);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, settings.gstin, settings.gstEnabled, settings.einvoiceApplicable]);
+  }, [isLoading, settings.gstin, settings.gstEnabled, settings.einvoiceApplicabilityStatus]);
 
   const set = <K extends keyof GstBusinessSettings>(key: K, value: GstBusinessSettings[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -57,14 +57,52 @@ export function GstSettingsForm() {
           </p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5">
-          <label className="flex items-center justify-between gap-3 text-sm text-zinc-200 cursor-pointer">
-            <span className="font-semibold">e-Invoicing applicable</span>
-            <input type="checkbox" checked={form.einvoiceApplicable} onChange={e => set('einvoiceApplicable', e.target.checked)} className="accent-amber-500 w-4 h-4" />
+          <label className="block text-sm text-zinc-200">
+            <span className="font-semibold">e-Invoice applicability assessment</span>
+            <select
+              value={form.einvoiceApplicabilityStatus}
+              onChange={e => {
+                const status = e.target.value as GstBusinessSettings['einvoiceApplicabilityStatus'];
+                set('einvoiceApplicabilityStatus', status);
+                set('einvoiceApplicable', status === 'applicable');
+                set('applicabilityAssessedAt', status === 'needs_review' ? null : new Date().toISOString());
+              }}
+              className={`${inputClass} mt-2`}
+            >
+              <option value="needs_review">Needs Review</option>
+              <option value="applicable">Applicable</option>
+              <option value="not_applicable">Not Applicable</option>
+              <option value="exempt">Exempt</option>
+            </select>
           </label>
           <p className="text-[11px] text-zinc-500 mt-1.5">
-            Switch this on only if your business crosses the turnover limit notified by the GST department.
-            e-Invoices are then prepared only for registered (B2B / SEZ / Export) sales.
+            Set this after checking current rules and exemptions with your GST practitioner. This setting is a recorded assessment, not legal advice.
           </p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+        <label className="flex items-center justify-between gap-3 text-sm text-zinc-200 cursor-pointer">
+          <span>Notified turnover threshold crossed in a relevant financial year</span>
+          <input type="checkbox" checked={form.turnoverThresholdCrossed} onChange={e => set('turnoverThresholdCrossed', e.target.checked)} className="accent-amber-500 w-4 h-4" />
+        </label>
+        <div>
+          <label className={labelClass}>Supplier exemption category</label>
+          <select value={form.supplierExemptionCategory} onChange={e => set('supplierExemptionCategory', e.target.value as GstBusinessSettings['supplierExemptionCategory'])} className={inputClass}>
+            {SUPPLIER_EXEMPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Rule threshold (₹)</label>
+          <input type="number" min="0" value={form.applicabilityRuleThreshold} onChange={e => set('applicabilityRuleThreshold', Number(e.target.value) || 0)} className={`${inputClass} font-mono`} />
+        </div>
+        <div>
+          <label className={labelClass}>Rule reference</label>
+          <input value={form.applicabilityRuleReference} onChange={e => set('applicabilityRuleReference', e.target.value)} className={inputClass} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelClass}>Exemption / assessment notes</label>
+          <input value={form.exemptionNotes} onChange={e => set('exemptionNotes', e.target.value)} className={inputClass} placeholder="Record the basis confirmed by your GST practitioner" />
         </div>
       </div>
 
@@ -125,16 +163,21 @@ export function GstSettingsForm() {
           <input value={form.placeOfSupply} onChange={e => set('placeOfSupply', e.target.value)} className={`${inputClass} font-mono`} placeholder="27" maxLength={2} />
         </div>
         <div>
-          <label className={labelClass}>Default HSN / SAC</label>
-          <input value={form.defaultHsn} onChange={e => set('defaultHsn', e.target.value)} className={`${inputClass} font-mono`} placeholder="22030000" />
+          <label className={labelClass}>Optional Default HSN / SAC</label>
+          <input value={form.defaultHsn} onChange={e => set('defaultHsn', e.target.value)} className={`${inputClass} font-mono`} placeholder="Enter only if confirmed for your items" />
         </div>
         <div>
-          <label className={labelClass}>Default GST Rate</label>
+          <label className={labelClass}>Optional Default GST Rate</label>
           <select value={form.defaultGstRate} onChange={e => set('defaultGstRate', Number(e.target.value))} className={inputClass}>
+            <option value={0}>Not set</option>
             {GST_RATES.map(r => (
-              <option key={r} value={r}>{r}%</option>
+              r > 0 && <option key={r} value={r}>{r}%</option>
             ))}
           </select>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-zinc-400">
+            <input type="checkbox" checked={form.defaultTaxConfirmed} onChange={e => set('defaultTaxConfirmed', e.target.checked)} className="accent-amber-500" />
+            I confirm this default rate is appropriate where an item has no rate.
+          </label>
         </div>
       </div>
 
@@ -144,16 +187,18 @@ export function GstSettingsForm() {
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             e-Invoice Ready
           </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-600/30">
+            API Not Connected
+          </span>
         </div>
         <select value={form.einvoiceMode} onChange={e => set('einvoiceMode', e.target.value === 'ready' ? 'ready' : 'off')} className={`${inputClass} sm:w-72`}>
           <option value="off">Off — no e-Invoice actions</option>
           <option value="ready">e-Invoice Ready — prepare invoices for an IRP/GSP account</option>
         </select>
         <p className="text-[11px] text-zinc-500 mt-2">
-          No authorised government e-Invoice provider is connected yet, so no IRN can be issued and none is ever
-          invented. Your invoices are prepared and stored in the correct government format, so they can be filed
-          the moment an authorised IRP/GSP account is connected. Connection details are held securely on the
-          server side only — never inside the app on your device.
+          No authorised e-Invoice provider is connected, so no IRN can be issued and none is ever invented.
+          Tax invoices are saved in TapTrack for your records only. Saving, printing or syncing them does not file
+          a GST return and does not submit them to GSTN or an IRP.
         </p>
       </div>
 

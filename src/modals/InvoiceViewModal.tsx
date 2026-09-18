@@ -118,7 +118,7 @@ export function InvoiceViewModal() {
                     <td className="py-1.5 text-center">{line.qty}</td>
                     <td className="py-1.5 text-right">{fmtMoney(line.unitPrice)}</td>
                     <td className="py-1.5 text-right">{fmtMoney(line.taxableValue)}</td>
-                    <td className="py-1.5 text-center">{line.gstRate}%</td>
+                    <td className="py-1.5 text-center">{line.gstRateConfigured ? `${line.gstRate}%` : 'Not set'}</td>
                     {gst.isInterstate ? (
                       <td className="py-1.5 text-right">{fmtMoney(line.igstAmount)}</td>
                     ) : (
@@ -191,6 +191,7 @@ export function InvoiceViewModal() {
             ) : (
               <div className="text-zinc-600">{gst.einvoiceReason ?? 'No IRN has been issued for this invoice yet.'}</div>
             )}
+            <div className="mt-2 text-zinc-600">Saved in TapTrack only. This does not file a GST return or submit the invoice to GSTN/IRP.</div>
           </div>
 
           <div className="pt-3 border-t border-zinc-300 text-center text-[10px] text-zinc-500">

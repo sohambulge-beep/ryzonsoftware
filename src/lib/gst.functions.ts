@@ -15,10 +15,18 @@ export interface GstSettingsInput {
   placeOfSupply: string;
   gstEnabled: boolean;
   einvoiceApplicable: boolean;
+  einvoiceApplicabilityStatus: 'needs_review' | 'applicable' | 'not_applicable' | 'exempt';
+  turnoverThresholdCrossed: boolean;
+  supplierExemptionCategory: string;
+  exemptionNotes: string;
+  applicabilityAssessedAt: string | null;
+  applicabilityRuleThreshold: number;
+  applicabilityRuleReference: string;
   einvoiceMode: 'off' | 'ready';
   einvoiceThreshold: number;
   defaultHsn: string;
   defaultGstRate: number;
+  defaultTaxConfirmed: boolean;
 }
 
 export interface RecordGstInvoiceInput {
@@ -53,6 +61,7 @@ export interface RecordGstInvoiceInput {
     discount: number;
     taxableValue: number;
     gstRate: number;
+    gstRateConfigured: boolean;
     cgstAmount: number;
     sgstAmount: number;
     igstAmount: number;
@@ -91,10 +100,18 @@ export const saveGstSettings = createServerFn({ method: 'POST' })
       place_of_supply: data.placeOfSupply,
       gst_enabled: data.gstEnabled,
       einvoice_applicable: data.einvoiceApplicable,
+      einvoice_applicability_status: data.einvoiceApplicabilityStatus,
+      turnover_threshold_crossed: data.turnoverThresholdCrossed,
+      supplier_exemption_category: data.supplierExemptionCategory,
+      exemption_notes: data.exemptionNotes,
+      applicability_assessed_at: data.applicabilityAssessedAt,
+      applicability_rule_threshold: data.applicabilityRuleThreshold,
+      applicability_rule_reference: data.applicabilityRuleReference,
       einvoice_mode: data.einvoiceMode,
       einvoice_threshold: data.einvoiceThreshold,
       default_hsn: data.defaultHsn,
       default_gst_rate: data.defaultGstRate,
+      default_tax_confirmed: data.defaultTaxConfirmed,
     };
     const { data: saved, error } = await context.supabase
       .from('gst_settings')
@@ -204,6 +221,7 @@ export const recordGstInvoice = createServerFn({ method: 'POST' })
           discount: item.discount,
           taxable_value: item.taxableValue,
           gst_rate: item.gstRate,
+          gst_rate_configured: item.gstRateConfigured,
           cgst_amount: item.cgstAmount,
           sgst_amount: item.sgstAmount,
           igst_amount: item.igstAmount,
@@ -251,35 +269,62 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
       .eq('gst_invoice_id', invoice.id)
       .order('line_no');
 
+    const invalidItem = (items ?? []).find(item => !item.hsn_sac.trim() || !item.gst_rate_configured);
+    if (invalidItem) {
+      const message = 'Confirm the HSN/SAC and GST rate for every item before e-Invoice submission.';
+      await context.supabase.from('gst_invoices').update({ einvoice_validation_error: message }).eq('id', invoice.id);
+      return { success: false, alreadyGenerated: false, apiConnected: false, errorMessage: message };
+    }
+
     const { buildIrpPayload } = await import('@/lib/einvoice/payload.server');
     const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
 
     const payload = buildIrpPayload(invoice, items ?? []);
     const provider = getEInvoiceProvider();
+    if (!provider.configured) {
+      return {
+        success: false,
+        alreadyGenerated: false,
+        apiConnected: false,
+        errorMessage: 'API Not Connected. This invoice is saved in TapTrack only and has not been submitted to IRP or GSTN.',
+      };
+    }
     const result = await provider.generate(payload);
+    const completeSuccess = Boolean(
+      result.success && result.irn?.trim() && result.ackNo?.trim() && result.ackDate?.trim() && result.signedQr?.trim(),
+    );
+    const safeResult = completeSuccess
+      ? result
+      : {
+          ...result,
+          success: false,
+          errorCode: result.errorCode ?? 'INCOMPLETE_PROVIDER_RESPONSE',
+          errorMessage: result.errorMessage ?? 'The provider returned an incomplete response. No government identifiers were saved.',
+        };
 
     await supabaseAdmin.from('gst_einvoice_logs').insert({
       user_id: context.userId,
       gst_invoice_id: invoice.id,
       action: 'generate',
       provider: provider.name,
-      http_status: result.httpStatus ?? null,
-      success: result.success,
+      http_status: safeResult.httpStatus ?? null,
+      success: safeResult.success,
       request_payload: payload as never,
-      response_payload: (result.rawResponse ?? null) as never,
-      error_code: result.errorCode ?? null,
-      error_message: result.errorMessage ?? null,
+      response_payload: (safeResult.rawResponse ?? null) as never,
+      error_code: safeResult.errorCode ?? null,
+      error_message: safeResult.errorMessage ?? null,
     });
 
-    const update = result.success
+    const update = safeResult.success
       ? {
           einvoice_status: 'generated' as const,
-          irn: result.irn ?? null,
-          ack_no: result.ackNo ?? null,
-          ack_date: result.ackDate ?? null,
-          signed_qr: result.signedQr ?? null,
-          signed_invoice: result.signedInvoice ?? null,
+          irn: safeResult.irn ?? null,
+          ack_no: safeResult.ackNo ?? null,
+          ack_date: safeResult.ackDate ?? null,
+          signed_qr: safeResult.signedQr ?? null,
+          signed_invoice: safeResult.signedInvoice ?? null,
+          einvoice_validation_error: null,
           last_error_code: null,
           last_error_message: null,
           attempt_count: invoice.attempt_count + 1,
@@ -287,8 +332,8 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
         }
       : {
           einvoice_status: 'failed' as const,
-          last_error_code: result.errorCode ?? 'UNKNOWN',
-          last_error_message: result.errorMessage ?? 'Unknown error',
+          last_error_code: safeResult.errorCode ?? 'UNKNOWN',
+          last_error_message: safeResult.errorMessage ?? 'Unknown error',
           attempt_count: invoice.attempt_count + 1,
           last_attempt_at: new Date().toISOString(),
         };
@@ -296,9 +341,10 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
     await context.supabase.from('gst_invoices').update(update).eq('id', invoice.id);
 
     return {
-      success: result.success,
+      success: safeResult.success,
       alreadyGenerated: false,
-      errorMessage: result.success ? null : (result.errorMessage ?? 'Unknown error'),
+      apiConnected: provider.configured,
+      errorMessage: safeResult.success ? null : (safeResult.errorMessage ?? 'Unknown error'),
     };
   });
 
@@ -322,11 +368,22 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
 
     const provider = getEInvoiceProvider();
-    const result = await provider.cancel({
+    if (!provider.configured) {
+      return { success: false, apiConnected: false, errorMessage: 'API Not Connected. No cancellation was submitted.' };
+    }
+    const providerResult = await provider.cancel({
       irn: invoice.irn,
       reasonCode: data.reasonCode,
       remark: data.remark,
     });
+    const result = providerResult.success && !providerResult.cancelDate?.trim()
+      ? {
+          ...providerResult,
+          success: false,
+          errorCode: 'INCOMPLETE_PROVIDER_RESPONSE',
+          errorMessage: 'The provider returned an incomplete cancellation response. The IRN remains unchanged.',
+        }
+      : providerResult;
 
     await supabaseAdmin.from('gst_einvoice_logs').insert({
       user_id: context.userId,
@@ -348,7 +405,7 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
           einvoice_status: 'cancelled',
           cancel_reason: data.reasonCode,
           cancel_remark: data.remark,
-          cancelled_at: result.cancelDate ?? new Date().toISOString(),
+          cancelled_at: result.cancelDate,
         })
         .eq('id', invoice.id);
     } else {
