@@ -4,7 +4,7 @@ import { buildBillMessage, buildWhatsAppLink } from "../utils/whatsapp";
 
 export default function WhatsAppShareButton({
   phone = "",
-  businessName = "TapTrack",
+  businessName = "prime terminal",
   customerName = "",
   invoiceNumber = "",
   date = "",
