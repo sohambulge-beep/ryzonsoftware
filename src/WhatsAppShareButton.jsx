@@ -1,6 +1,6 @@
 // src/components/WhatsAppShareButton.jsx
 import React from "react";
-import { buildBillMessage, buildWhatsAppLink } from "../utils/whatsapp";
+import { buildBillMessage, buildWhatsAppLink } from "./utils/whatsapp";
 
 export default function WhatsAppShareButton({
   phone = "",
