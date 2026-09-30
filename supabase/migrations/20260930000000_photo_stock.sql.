@@ -1,0 +1,89 @@
+-- ==========================================
+-- 1. STORAGE BUCKET CREATION (PRIVATE)
+-- ==========================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'stock_photos', 
+    'stock_photos', 
+    false, 
+    5242880, -- 5 MB limit
+    ARRAY['image/jpeg', 'image/png', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE SET 
+    public = false,
+    file_size_limit = 5242880,
+    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
+
+-- ==========================================
+-- 2. STORAGE RLS POLICIES (ISOLATED BY USER/OUTLET PATH)
+-- User can only upload to their own folder: stock_photos/{user_id}/*
+-- ==========================================
+DROP POLICY IF EXISTS "Users can upload stock photos to own folder" ON storage.objects;
+CREATE POLICY "Users can upload stock photos to own folder"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+    bucket_id = 'stock_photos' 
+    AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+DROP POLICY IF EXISTS "Users can read stock photos from own folder" ON storage.objects;
+CREATE POLICY "Users can read stock photos from own folder"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+    bucket_id = 'stock_photos' 
+    AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- ==========================================
+-- 3. NEW TABLES FOR PHOTO STOCK FEATURE ONLY
+-- ==========================================
+
+-- Table to log scanned photos and track duplicate photo hashes
+CREATE TABLE IF NOT EXISTS public.stock_photos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    photo_path TEXT NOT NULL,
+    photo_hash TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'processed',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_user_photo_hash UNIQUE (user_id, photo_hash)
+);
+
+-- Table to record photo-driven stock movements
+CREATE TABLE IF NOT EXISTS public.photo_stock_movements (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
+    quantity_change NUMERIC NOT NULL,
+    type VARCHAR(50) DEFAULT 'purchase',
+    source VARCHAR(50) DEFAULT 'photo_scan',
+    photo_id UUID REFERENCES public.stock_photos(id) ON DELETE SET NULL,
+    notes TEXT,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.stock_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.photo_stock_movements ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for stock_photos (Isolated per user)
+DROP POLICY IF EXISTS "Users can view own stock_photos" ON public.stock_photos;
+CREATE POLICY "Users can view own stock_photos"
+ON public.stock_photos FOR SELECT TO authenticated
+USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own stock_photos" ON public.stock_photos;
+CREATE POLICY "Users can insert own stock_photos"
+ON public.stock_photos FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+-- RLS Policies for photo_stock_movements (Isolated per user)
+DROP POLICY IF EXISTS "Users can view own photo_stock_movements" ON public.photo_stock_movements;
+CREATE POLICY "Users can view own photo_stock_movements"
+ON public.photo_stock_movements FOR SELECT TO authenticated
+USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own photo_stock_movements" ON public.photo_stock_movements;
+CREATE POLICY "Users can insert own photo_stock_movements"
+ON public.photo_stock_movements FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
