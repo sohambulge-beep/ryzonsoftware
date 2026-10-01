@@ -8,8 +8,6 @@
 
 export const GST_RATES = [0, 5, 12, 18, 28] as const;
 
-export const EINVOICE_API_CONNECTED = false;
-
 export type EInvoiceApplicabilityStatus = 'needs_review' | 'applicable' | 'not_applicable' | 'exempt';
 
 export type SupplierExemptionCategory =

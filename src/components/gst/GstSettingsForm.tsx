@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGstSettings, useSaveGstSettings } from '@/hooks/useGst';
+import { useEInvoiceConnection, useGstSettings, useSaveGstSettings, useTestEInvoiceConnection, useValidateBusinessGstin } from '@/hooks/useGst';
 import { EMPTY_GST_SETTINGS, GST_RATES, SUPPLIER_EXEMPTIONS, isValidGstin, stateCodeFromGstin, type GstBusinessSettings } from '@/lib/gst';
 
 const inputClass =
@@ -12,6 +12,13 @@ export function GstSettingsForm() {
   const save = useSaveGstSettings();
   const [form, setForm] = useState<GstBusinessSettings>(EMPTY_GST_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const connection = useEInvoiceConnection();
+  const testConnection = useTestEInvoiceConnection();
+  const validateGstin = useValidateBusinessGstin();
+  const connectionData = connection.data;
+  const environment = connectionData?.environment === 'production' ? 'production' : 'sandbox';
+  const connected = connectionData?.connection_status === 'connected';
+  const authorized = connectionData?.authorization_status === 'authorized';
 
   useEffect(() => {
     if (!isLoading) setForm(settings);
@@ -187,8 +194,8 @@ export function GstSettingsForm() {
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             e-Invoice Ready
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-600/30">
-            API Not Connected
+          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${connected && authorized ? 'bg-emerald-500/10 text-emerald-400 border-emerald-600/30' : 'bg-red-500/10 text-red-400 border-red-600/30'}`}>
+            {connected && authorized ? `${environment === 'sandbox' ? 'Sandbox' : 'Production'} Connected` : 'API Not Connected'}
           </span>
         </div>
         <select value={form.einvoiceMode} onChange={e => set('einvoiceMode', e.target.value === 'ready' ? 'ready' : 'off')} className={`${inputClass} sm:w-72`}>
@@ -196,10 +203,41 @@ export function GstSettingsForm() {
           <option value="ready">e-Invoice Ready — prepare invoices for an IRP/GSP account</option>
         </select>
         <p className="text-[11px] text-zinc-500 mt-2">
-          No authorised e-Invoice provider is connected, so no IRN can be issued and none is ever invented.
+          IRIS is configured and tested only through the secure server. No IRN can be issued until a genuine connection and GSTIN authorization succeed, and none is ever invented.
           Tax invoices are saved in TapTrack for your records only. Saving, printing or syncing them does not file
           a GST return and does not submit them to GSTN or an IRP.
         </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 text-[11px]">
+          <div className="rounded border border-zinc-800 p-2 text-zinc-400">
+            <span className="text-zinc-500">Environment</span>
+            <div className="font-mono text-zinc-200 capitalize">{environment}</div>
+          </div>
+          <div className="rounded border border-zinc-800 p-2 text-zinc-400">
+            <span className="text-zinc-500">Taxpayer authorization</span>
+            <div className="font-mono text-zinc-200 capitalize">{(connectionData?.authorization_status ?? 'not_connected').replaceAll('_', ' ')}</div>
+          </div>
+          <div className="rounded border border-zinc-800 p-2 text-zinc-400">
+            <span className="text-zinc-500">Last successful connection</span>
+            <div className="font-mono text-zinc-200">{connectionData?.last_successful_connection_at ? new Date(connectionData.last_successful_connection_at).toLocaleString() : 'Never'}</div>
+          </div>
+          <div className="rounded border border-zinc-800 p-2 text-zinc-400">
+            <span className="text-zinc-500">GSTIN validation</span>
+            <div className="font-mono text-zinc-200">{connectionData?.gstin_validated_at ? `Validated ${new Date(connectionData.gstin_validated_at).toLocaleString()}` : 'Not validated'}</div>
+          </div>
+        </div>
+        {connectionData?.last_error_message && <p className="mt-2 text-[11px] text-red-400">{connectionData.last_error_message}</p>}
+        {testConnection.data && !testConnection.data.success && <p className="mt-2 text-[11px] text-amber-300">{testConnection.data.errorMessage}</p>}
+        {validateGstin.data && !validateGstin.data.success && <p className="mt-2 text-[11px] text-amber-300">{validateGstin.data.errorMessage}</p>}
+        {validateGstin.data?.success && <p className="mt-2 text-[11px] text-emerald-400">GSTIN validated by IRIS{validateGstin.data.legalName ? `: ${validateGstin.data.legalName}` : ''}.</p>}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" onClick={() => testConnection.mutate(environment)} disabled={testConnection.isPending || !form.gstin} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
+            {testConnection.isPending ? 'Testing…' : `Test ${environment === 'sandbox' ? 'Sandbox' : 'Production'} Connection`}
+          </button>
+          <button type="button" onClick={() => validateGstin.mutate()} disabled={!connected || !authorized || validateGstin.isPending} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
+            {validateGstin.isPending ? 'Validating…' : 'Validate GSTIN'}
+          </button>
+        </div>
+        <p className="mt-2 text-[10px] text-zinc-600">Production requires separately configured IRIS production credentials and is never enabled automatically.</p>
       </div>
 
       <div className="flex items-center gap-3">
