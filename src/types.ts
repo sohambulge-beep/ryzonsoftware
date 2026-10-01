@@ -182,6 +182,7 @@ export interface TableOrder {
   status: 'Open' | 'Billed' | 'Cancelled';
   invoice_id?: string | null;
   created_at: string;
+  opened_at?: string;
   billed_at?: string | null;
 }
 
