@@ -27,6 +27,7 @@ export interface EInvoiceGenerateResult {
   errorCode?: string;
   errorMessage?: string;
   rawResponse?: unknown;
+  providerRequestId?: string;
 }
 
 export interface EInvoiceCancelResult {
@@ -36,12 +37,20 @@ export interface EInvoiceCancelResult {
   errorCode?: string;
   errorMessage?: string;
   rawResponse?: unknown;
+  providerRequestId?: string;
 }
+
+export type EInvoiceEnvironment = 'sandbox' | 'production';
+export interface EInvoiceConnectionResult { success: boolean; httpStatus?: number; errorCode?: string; errorMessage?: string }
+export interface EInvoiceGstinResult extends EInvoiceConnectionResult { details?: Record<string, unknown>; rawResponse?: unknown }
 
 export interface EInvoiceProvider {
   readonly name: string;
   readonly configured: boolean;
-  generate(payload: Record<string, unknown>): Promise<EInvoiceGenerateResult>;
+  readonly environment: EInvoiceEnvironment;
+  testConnection(): Promise<EInvoiceConnectionResult>;
+  validateGstin(gstin: string): Promise<EInvoiceGstinResult>;
+  generate(payload: Record<string, unknown>, documentKey: string): Promise<EInvoiceGenerateResult>;
   cancel(args: { irn: string; reasonCode: string; remark: string }): Promise<EInvoiceCancelResult>;
 }
 
@@ -51,6 +60,17 @@ const NOT_CONFIGURED_MESSAGE =
 class NotConfiguredProvider implements EInvoiceProvider {
   readonly name = 'none';
   readonly configured = false;
+  readonly environment: EInvoiceEnvironment;
+
+  constructor(environment: EInvoiceEnvironment) { this.environment = environment; }
+
+  async testConnection(): Promise<EInvoiceConnectionResult> {
+    return { success: false, errorCode: 'PROVIDER_NOT_CONFIGURED', errorMessage: NOT_CONFIGURED_MESSAGE };
+  }
+
+  async validateGstin(): Promise<EInvoiceGstinResult> {
+    return { success: false, errorCode: 'PROVIDER_NOT_CONFIGURED', errorMessage: NOT_CONFIGURED_MESSAGE };
+  }
 
   async generate(): Promise<EInvoiceGenerateResult> {
     return {
@@ -73,17 +93,8 @@ class NotConfiguredProvider implements EInvoiceProvider {
  * Resolve the active provider. Credentials are read from backend environment
  * secrets only, inside the handler — never bundled into frontend code.
  */
-export function getEInvoiceProvider(): EInvoiceProvider {
-  const baseUrl = process.env['EINVOICE_API_BASE_URL'];
-  const clientId = process.env['EINVOICE_CLIENT_ID'];
-  const clientSecret = process.env['EINVOICE_CLIENT_SECRET'];
-
-  if (baseUrl && clientId && clientSecret) {
-    // A real GSP implementation plugs in here once credentials exist.
-    // Until an authorised integration is written and certified we still refuse
-    // rather than fabricate a response.
-    return new NotConfiguredProvider();
-  }
-
-  return new NotConfiguredProvider();
+export async function getEInvoiceProvider(environment: EInvoiceEnvironment, gstin: string): Promise<EInvoiceProvider> {
+  const { getIrisConfig, IrisProvider } = await import('@/lib/einvoice/providers/iris.server');
+  const config = getIrisConfig(environment, gstin);
+  return config ? new IrisProvider(config) : new NotConfiguredProvider(environment);
 }
