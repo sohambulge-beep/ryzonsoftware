@@ -12,6 +12,7 @@ export function GstSettingsForm() {
   const save = useSaveGstSettings();
   const [form, setForm] = useState<GstBusinessSettings>(EMPTY_GST_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const [connectionEnvironment, setConnectionEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const connection = useEInvoiceConnection();
   const testConnection = useTestEInvoiceConnection();
   const validateGstin = useValidateBusinessGstin();
@@ -24,6 +25,10 @@ export function GstSettingsForm() {
     if (!isLoading) setForm(settings);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, settings.gstin, settings.gstEnabled, settings.einvoiceApplicabilityStatus]);
+
+  useEffect(() => {
+    if (connection.data?.environment === 'production') setConnectionEnvironment('production');
+  }, [connection.data?.environment]);
 
   const set = <K extends keyof GstBusinessSettings>(key: K, value: GstBusinessSettings[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -210,7 +215,10 @@ export function GstSettingsForm() {
         <div className="mt-3 grid gap-2 sm:grid-cols-2 text-[11px]">
           <div className="rounded border border-zinc-800 p-2 text-zinc-400">
             <span className="text-zinc-500">Environment</span>
-            <div className="font-mono text-zinc-200 capitalize">{environment}</div>
+            <select value={connectionEnvironment} onChange={event => setConnectionEnvironment(event.target.value === 'production' ? 'production' : 'sandbox')} className="mt-1 w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200">
+              <option value="sandbox">Sandbox</option>
+              <option value="production">Production</option>
+            </select>
           </div>
           <div className="rounded border border-zinc-800 p-2 text-zinc-400">
             <span className="text-zinc-500">Taxpayer authorization</span>
@@ -230,11 +238,11 @@ export function GstSettingsForm() {
         {validateGstin.data && !validateGstin.data.success && <p className="mt-2 text-[11px] text-amber-300">{validateGstin.data.errorMessage}</p>}
         {validateGstin.data?.success && <p className="mt-2 text-[11px] text-emerald-400">GSTIN validated by IRIS{validateGstin.data.legalName ? `: ${validateGstin.data.legalName}` : ''}.</p>}
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={() => testConnection.mutate(environment)} disabled={testConnection.isPending || !form.gstin} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
-            {testConnection.isPending ? 'Testing…' : `Test ${environment === 'sandbox' ? 'Sandbox' : 'Production'} Connection`}
+          <button type="button" onClick={() => testConnection.mutate(connectionEnvironment)} disabled={testConnection.isPending || !form.gstin} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
+            {testConnection.isPending ? 'Testing…' : `Test ${connectionEnvironment === 'sandbox' ? 'Sandbox' : 'Production'} Connection`}
           </button>
           <button type="button" onClick={() => validateGstin.mutate()} disabled={!connected || validateGstin.isPending} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
-            {validateGstin.isPending ? 'Validating…' : 'Validate & Authorize GSTIN'}
+            {validateGstin.isPending ? 'Validating…' : 'Validate GSTIN'}
           </button>
         </div>
         <p className="mt-2 text-[10px] text-zinc-600">Production requires separately configured IRIS production credentials and is never enabled automatically.</p>

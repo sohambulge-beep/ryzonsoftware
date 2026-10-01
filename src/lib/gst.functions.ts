@@ -173,18 +173,29 @@ export const testEInvoiceConnection = createServerFn({ method: 'POST' })
     const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
     const provider = await getEInvoiceProvider(data.environment, gstin);
     const attemptedAt = new Date().toISOString();
-    const result = provider.configured
-      ? await provider.testConnection()
-      : { success: false, errorCode: 'PROVIDER_NOT_CONFIGURED', errorMessage: `IRIS ${data.environment} credentials are not configured.` };
-    const errorMessage = result.success ? null : sanitizeProviderError(result.errorMessage);
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     await supabaseAdmin.from('gst_einvoice_connections').upsert({
       user_id: context.userId,
       provider: 'iris',
       environment: data.environment,
-      connection_status: result.success ? 'connected' : 'failed',
-      authorization_status: result.success ? 'pending_authorization' : 'not_connected',
+      connection_status: 'not_connected',
+      authorization_status: provider.configured ? 'pending_authorization' : 'not_connected',
       authorized_gstin: '',
+      last_connection_attempt_at: attemptedAt,
+      last_error_code: null,
+      last_error_message: null,
+    }, { onConflict: 'user_id' });
+    const result = provider.configured
+      ? await provider.testConnection()
+      : { success: false, errorCode: 'PROVIDER_NOT_CONFIGURED', errorMessage: `IRIS ${data.environment} credentials are not configured.` };
+    const errorMessage = result.success ? null : sanitizeProviderError(result.errorMessage);
+    await supabaseAdmin.from('gst_einvoice_connections').upsert({
+      user_id: context.userId,
+      provider: 'iris',
+      environment: data.environment,
+      connection_status: result.success ? 'connected' : 'failed',
+      authorization_status: result.success ? 'authorized' : 'failed',
+      authorized_gstin: result.success ? gstin : '',
       last_connection_attempt_at: attemptedAt,
       last_successful_connection_at: result.success ? attemptedAt : undefined,
       authorization_updated_at: attemptedAt,
@@ -203,8 +214,8 @@ export const validateBusinessGstin = createServerFn({ method: 'POST' })
     ]);
     const gstin = settings?.gstin?.trim().toUpperCase() ?? '';
     if (!gstin) return { success: false, errorMessage: 'Save the business GSTIN before validation.' };
-    if (!connection || connection.connection_status !== 'connected') {
-      return { success: false, errorMessage: 'Connect IRIS before validating and authorizing the GSTIN.' };
+    if (!connection || connection.connection_status !== 'connected' || connection.authorization_status !== 'authorized') {
+      return { success: false, errorMessage: 'Connect and authorize IRIS before validating the GSTIN.' };
     }
     const environment = connection.environment as EInvoiceEnvironment;
     const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
@@ -215,9 +226,6 @@ export const validateBusinessGstin = createServerFn({ method: 'POST' })
     const errorMessage = result.success ? null : sanitizeProviderError(result.errorMessage);
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     await supabaseAdmin.from('gst_einvoice_connections').update({
-      authorization_status: result.success ? 'authorized' : 'failed',
-      authorized_gstin: result.success ? gstin : '',
-      authorization_updated_at: new Date().toISOString(),
       gstin_validated_at: result.success ? new Date().toISOString() : null,
       validated_legal_name: result.success ? readText(details, ['LegalName', 'LglNm', 'legalName']) : null,
       validated_trade_name: result.success ? readText(details, ['TradeName', 'TrdNm', 'tradeName']) : null,
