@@ -184,12 +184,12 @@ export class IrisProvider implements EInvoiceProvider {
       }
       return {
         success: true,
-        irn: String(source.Irn ?? ''),
-        ackNo: String(source.AckNo ?? ''),
-        ackDate: String(source.AckDt ?? ''),
-        signedQr: String(source.SignedQRCode ?? ''),
-        signedInvoice: source.SignedInvoice ? String(source.SignedInvoice) : undefined,
-        providerRequestId: String(source.Irn ?? documentKey),
+        irn: String(source['Irn'] ?? ''),
+        ackNo: String(source['AckNo'] ?? ''),
+        ackDate: String(source['AckDt'] ?? ''),
+        signedQr: String(source['SignedQRCode'] ?? ''),
+        signedInvoice: source['SignedInvoice'] ? String(source['SignedInvoice']) : undefined,
+        providerRequestId: String(source['Irn'] ?? documentKey),
         httpStatus: result.httpStatus,
         rawResponse: result.envelope,
       };
@@ -210,8 +210,8 @@ export class IrisProvider implements EInvoiceProvider {
       }
       return {
         success: true,
-        cancelDate: String(result.data.CancelDate ?? ''),
-        providerRequestId: String(result.data.Irn ?? args.irn),
+        cancelDate: String(result.data['CancelDate'] ?? ''),
+        providerRequestId: String(result.data['Irn'] ?? args.irn),
         httpStatus: result.httpStatus,
         rawResponse: result.envelope,
       };

@@ -5,15 +5,9 @@
  * The billing system never imports it directly — it goes through the server
  * functions in `src/lib/gst.functions.ts`.
  *
- * Today no authorised IRP/GSP is connected, so `NotConfiguredProvider` is used
- * and every call returns a clear, honest "not configured" failure. No dummy
- * IRNs, no simulated government connectivity.
- *
- * To connect a real provider later:
- *   1. Add the credentials as backend secrets (never in frontend code).
- *   2. Implement `EInvoiceProvider` in a new file next to this one.
- *   3. Return it from `getEInvoiceProvider()` when the secrets are present.
- * Nothing in the POS, invoices or UI needs to change.
+ * IRIS is selected only when all environment-specific credentials and public
+ * encryption key material are present. Otherwise every call fails closed with
+ * a clear "not configured" result. No dummy IRNs or simulated connectivity.
  */
 
 export interface EInvoiceGenerateResult {
