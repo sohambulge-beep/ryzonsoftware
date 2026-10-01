@@ -3,8 +3,8 @@ import { useStore } from '@/store';
 import { fmtMoney, fmtTime } from '@/utils';
 import type { DiningTable, TableOrder, KotItem, KotRecord } from '@/types';
 import * as svc from '@/lib/tablesKotService';
-import { TableFormModal } from '@/components/tables/TableFormModal';
-import { KotPrintModal } from '@/components/tables/KotPrintModal';
+import { TableFormModal } from '@/modals/TableFormModal';
+import { KotPrintModal } from '@/modals/KotPrintModal';
 
 const STATUS_CARD: Record<string, string> = {
   'Free': 'border-emerald-700/60 bg-emerald-950/30 hover:border-emerald-500',

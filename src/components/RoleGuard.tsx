@@ -3,7 +3,7 @@ import {
   fetchCurrentUserRole,
   type AppRole,
   type PermissionKey,
-} from "@/lib/StaffLoginService";
+} from "@/lib/staffLoginService";
 
 interface RoleContextValue {
   role: AppRole;
