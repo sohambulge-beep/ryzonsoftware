@@ -131,6 +131,7 @@ interface StoreContextValue {
   setCartCustomer: (customerId: string) => void;
   cartCustomerId: string;
   processCheckout: (method: 'Cash' | 'Card' | 'Tab') => string | null;
+  processTableCheckout: (items: CartItem[], method: 'Cash' | 'Card') => string | null;
   quickPour: (tapId: string) => void;
   saveCustomer: (data: CustomerInput) => void;
   saveBeer: (data: Partial<Tap> & { name: string; tapNumber: number }) => void;
@@ -375,6 +376,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const processTableCheckout = useCallback((items: CartItem[], method: 'Cash' | 'Card'): string | null => {
+    if (items.length === 0) return null;
+    const invoiceId = genId('inv');
+    setDb(prev => {
+      const gst = buildInvoiceGst(items, prev.taps, undefined);
+      const rawSubtotal = items.reduce((sum, item) => sum + item.total, 0);
+      const subtotal = gst ? gst.taxableTotal : rawSubtotal;
+      const tax = gst ? gst.taxTotal : Number((rawSubtotal * prev.settings.taxRate).toFixed(2));
+      const total = gst ? gst.grandTotal : Number((subtotal + tax).toFixed(2));
+      const invoice: Invoice = {
+        id: invoiceId,
+        invoiceNo: genInvoiceNo(),
+        customerId: '',
+        customerName: 'Walk-in Guest',
+        items: items.map(item => ({ ...item })),
+        subtotal,
+        tax,
+        total,
+        paidAmount: total,
+        balanceDue: 0,
+        paymentMethod: method,
+        status: 'Paid',
+        timestamp: new Date().toISOString(),
+        ...(gst ? { gst } : {}),
+      };
+      return {
+        ...prev,
+        taps: prev.taps.map(tap => {
+          const item = items.find(candidate => candidate.beerId === tap.id);
+          return item ? { ...tap, currentLiters: Math.max(0, tap.currentLiters - item.litersTotal) } : tap;
+        }),
+        invoices: [...prev.invoices, invoice],
+      };
+    });
+    return invoiceId;
+  }, []);
+
   const saveCustomer = useCallback((data: CustomerInput) => {
     const gstFields = {
       customerType: data.customerType ?? ((data.gstin ?? '').trim() ? 'B2B' as const : 'B2C' as const),
@@ -555,7 +593,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreContextValue = {
     db, cart, currentView, modal, navigate, openModal, closeModal,
     clearCart, addToCart, updateCartQty, setCartCustomer, cartCustomerId,
-    processCheckout, quickPour, saveCustomer, saveBeer, saveSupplier,
+    processCheckout, processTableCheckout, quickPour, saveCustomer, saveBeer, saveSupplier,
     saveExpense, deleteExpense, savePurchase, savePayment,
     restoreData, loadSample, clearAll,
   };

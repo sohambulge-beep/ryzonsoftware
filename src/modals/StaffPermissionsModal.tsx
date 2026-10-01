@@ -10,7 +10,7 @@ import {
   type AppRole,
   type PermissionKey,
   type StaffRoleRow,
-} from "@/lib/StaffLoginService";
+} from "@/lib/staffLoginService";
 
 const MODULE_OPTIONS: { key: PermissionKey; label: string }[] = [
   { key: "pos", label: "Point of Sale" },

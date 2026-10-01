@@ -9,6 +9,9 @@ import {
   recordGstInvoice,
   generateEInvoice,
   cancelEInvoice,
+  getEInvoiceConnectionStatus,
+  testEInvoiceConnection,
+  validateBusinessGstin,
   type GstSettingsInput,
   type RecordGstInvoiceInput,
 } from '@/lib/gst.functions';
@@ -82,6 +85,32 @@ export function useGstInvoices() {
   return useQuery({
     queryKey: ['gst-invoices'],
     queryFn: () => list(),
+  });
+}
+
+export function useEInvoiceConnection() {
+  const getStatus = useServerFn(getEInvoiceConnectionStatus);
+  return useQuery({
+    queryKey: ['einvoice-connection'],
+    queryFn: () => getStatus(),
+  });
+}
+
+export function useTestEInvoiceConnection() {
+  const test = useServerFn(testEInvoiceConnection);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (environment: 'sandbox' | 'production') => test({ data: { environment } }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['einvoice-connection'] }),
+  });
+}
+
+export function useValidateBusinessGstin() {
+  const validate = useServerFn(validateBusinessGstin);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => validate(),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['einvoice-connection'] }),
   });
 }
 

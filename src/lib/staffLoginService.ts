@@ -103,7 +103,7 @@ export async function updateStaffPermissions(staffId: string, permissions: Permi
 /** Role change kare (optional: saath mein permissions bhi). */
 export async function updateStaffRole(staffId: string, role: AppRole, permissions?: PermissionKey[]): Promise<void> {
   const patch: Record<string, unknown> = { role };
-  if (permissions) patch.permissions = permissions;
+  if (permissions) patch['permissions'] = permissions;
   const { error } = await sb.from("staff_roles").update(patch).eq("id", staffId);
   if (error) throw new Error(error.message);
 }

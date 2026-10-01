@@ -14,46 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      gst_einvoice_connections: {
+        Row: {
+          authorization_status: string
+          authorization_updated_at: string | null
+          authorized_gstin: string
+          connection_status: string
+          created_at: string
+          environment: string
+          gstin_validated_at: string | null
+          last_connection_attempt_at: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          last_successful_connection_at: string | null
+          provider: string
+          provider_reference: string | null
+          updated_at: string
+          user_id: string
+          validated_address: Json | null
+          validated_legal_name: string | null
+          validated_trade_name: string | null
+        }
+        Insert: {
+          authorization_status?: string
+          authorization_updated_at?: string | null
+          authorized_gstin?: string
+          connection_status?: string
+          created_at?: string
+          environment?: string
+          gstin_validated_at?: string | null
+          last_connection_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_successful_connection_at?: string | null
+          provider?: string
+          provider_reference?: string | null
+          updated_at?: string
+          user_id?: string
+          validated_address?: Json | null
+          validated_legal_name?: string | null
+          validated_trade_name?: string | null
+        }
+        Update: {
+          authorization_status?: string
+          authorization_updated_at?: string | null
+          authorized_gstin?: string
+          connection_status?: string
+          created_at?: string
+          environment?: string
+          gstin_validated_at?: string | null
+          last_connection_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_successful_connection_at?: string | null
+          provider?: string
+          provider_reference?: string | null
+          updated_at?: string
+          user_id?: string
+          validated_address?: Json | null
+          validated_legal_name?: string | null
+          validated_trade_name?: string | null
+        }
+        Relationships: []
+      }
       gst_einvoice_logs: {
         Row: {
+          ack_date: string | null
+          ack_no: string | null
           action: string
+          api_environment: string | null
           created_at: string
+          document_key: string | null
           error_code: string | null
           error_message: string | null
           gst_invoice_id: string | null
+          gstin: string | null
           http_status: number | null
           id: string
+          irn: string | null
+          payload_hash: string | null
           provider: string
+          provider_request_id: string | null
           request_payload: Json | null
+          request_started_at: string | null
+          request_status: string
           response_payload: Json | null
+          response_received_at: string | null
+          retry_attempt: number
           success: boolean
           user_id: string
         }
         Insert: {
+          ack_date?: string | null
+          ack_no?: string | null
           action: string
+          api_environment?: string | null
           created_at?: string
+          document_key?: string | null
           error_code?: string | null
           error_message?: string | null
           gst_invoice_id?: string | null
+          gstin?: string | null
           http_status?: number | null
           id?: string
+          irn?: string | null
+          payload_hash?: string | null
           provider?: string
+          provider_request_id?: string | null
           request_payload?: Json | null
+          request_started_at?: string | null
+          request_status?: string
           response_payload?: Json | null
+          response_received_at?: string | null
+          retry_attempt?: number
           success?: boolean
           user_id?: string
         }
         Update: {
+          ack_date?: string | null
+          ack_no?: string | null
           action?: string
+          api_environment?: string | null
           created_at?: string
+          document_key?: string | null
           error_code?: string | null
           error_message?: string | null
           gst_invoice_id?: string | null
+          gstin?: string | null
           http_status?: number | null
           id?: string
+          irn?: string | null
+          payload_hash?: string | null
           provider?: string
+          provider_request_id?: string | null
           request_payload?: Json | null
+          request_started_at?: string | null
+          request_status?: string
           response_payload?: Json | null
+          response_received_at?: string | null
+          retry_attempt?: number
           success?: boolean
           user_id?: string
         }
@@ -156,11 +255,14 @@ export type Database = {
           cess_total: number
           cgst_total: number
           created_at: string
+          einvoice_environment: string | null
+          einvoice_provider: string | null
           einvoice_required: boolean
           einvoice_status: Database["public"]["Enums"]["einvoice_status"]
           einvoice_validation_error: string | null
           grand_total: number
           id: string
+          idempotency_key: string
           igst_total: number
           invoice_date: string
           invoice_no: string
@@ -172,12 +274,17 @@ export type Database = {
           last_error_message: string | null
           local_invoice_id: string
           place_of_supply: string
+          provider_document_id: string | null
+          provider_request_id: string | null
           seller_gstin: string
           seller_legal_name: string
           seller_state_code: string
           sgst_total: number
           signed_invoice: string | null
           signed_qr: string | null
+          submission_lock_expires_at: string | null
+          submission_lock_token: string | null
+          submission_state: string
           supply_type: string
           tax_total: number
           taxable_total: number
@@ -198,11 +305,14 @@ export type Database = {
           cess_total?: number
           cgst_total?: number
           created_at?: string
+          einvoice_environment?: string | null
+          einvoice_provider?: string | null
           einvoice_required?: boolean
           einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
           einvoice_validation_error?: string | null
           grand_total?: number
           id?: string
+          idempotency_key?: string
           igst_total?: number
           invoice_date?: string
           invoice_no: string
@@ -214,12 +324,17 @@ export type Database = {
           last_error_message?: string | null
           local_invoice_id: string
           place_of_supply?: string
+          provider_document_id?: string | null
+          provider_request_id?: string | null
           seller_gstin?: string
           seller_legal_name?: string
           seller_state_code?: string
           sgst_total?: number
           signed_invoice?: string | null
           signed_qr?: string | null
+          submission_lock_expires_at?: string | null
+          submission_lock_token?: string | null
+          submission_state?: string
           supply_type?: string
           tax_total?: number
           taxable_total?: number
@@ -240,11 +355,14 @@ export type Database = {
           cess_total?: number
           cgst_total?: number
           created_at?: string
+          einvoice_environment?: string | null
+          einvoice_provider?: string | null
           einvoice_required?: boolean
           einvoice_status?: Database["public"]["Enums"]["einvoice_status"]
           einvoice_validation_error?: string | null
           grand_total?: number
           id?: string
+          idempotency_key?: string
           igst_total?: number
           invoice_date?: string
           invoice_no?: string
@@ -256,12 +374,17 @@ export type Database = {
           last_error_message?: string | null
           local_invoice_id?: string
           place_of_supply?: string
+          provider_document_id?: string | null
+          provider_request_id?: string | null
           seller_gstin?: string
           seller_legal_name?: string
           seller_state_code?: string
           sgst_total?: number
           signed_invoice?: string | null
           signed_qr?: string | null
+          submission_lock_expires_at?: string | null
+          submission_lock_token?: string | null
+          submission_state?: string
           supply_type?: string
           tax_total?: number
           taxable_total?: number
@@ -711,6 +834,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_einvoice_cancellation: {
+        Args: { _invoice_id: string }
+        Returns: string
+      }
+      claim_einvoice_submission: {
+        Args: { _invoice_id: string }
+        Returns: string
+      }
       current_role_name: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -722,6 +853,10 @@ export type Database = {
       is_manager_or_owner: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       my_staff_id: { Args: never; Returns: string }
+      release_einvoice_claim: {
+        Args: { _invoice_id: string; _lock_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"

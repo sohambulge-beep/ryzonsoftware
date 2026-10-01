@@ -156,6 +156,48 @@ export interface CartItem {
   total: number;
 }
 
+export interface KotItem {
+  beerId: string;
+  beerName: string;
+  qty: number;
+  unitPrice: number;
+  cancelled?: boolean;
+}
+
+export interface DiningTable {
+  id: string;
+  user_id: string;
+  name: string;
+  seats: number;
+  status: 'Free' | 'Occupied' | 'Bill Pending';
+  sort_order: number;
+  created_at: string;
+}
+
+export interface TableOrder {
+  id: string;
+  user_id: string;
+  table_id: string;
+  items: KotItem[];
+  status: 'Open' | 'Billed' | 'Cancelled';
+  invoice_id?: string | null;
+  created_at: string;
+  opened_at: string;
+  billed_at?: string | null;
+}
+
+export interface KotRecord {
+  id: string;
+  user_id: string;
+  order_id: string;
+  table_id: string;
+  kot_no: number;
+  type: 'New' | 'Add' | 'Cancel';
+  items: KotItem[];
+  note: string;
+  created_at: string;
+}
+
 export interface AppData {
   settings: Settings;
   taps: Tap[];

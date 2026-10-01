@@ -1,6 +1,21 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
+type EInvoiceEnvironment = 'sandbox' | 'production';
+
+function sanitizeProviderError(message: string | undefined): string {
+  const safe = (message ?? 'The e-Invoice provider request failed.').replace(/[\r\n]+/g, ' ').trim();
+  return safe.slice(0, 500);
+}
+
+function readText(source: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 /** Shapes exchanged with the client. Kept plain so they serialise cleanly. */
 export interface GstSettingsInput {
   legalName: string;
@@ -120,6 +135,105 @@ export const saveGstSettings = createServerFn({ method: 'POST' })
       .single();
     if (error) throw new Error(error.message);
     return saved;
+  });
+
+export const getEInvoiceConnectionStatus = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from('gst_einvoice_connections')
+      .select('*')
+      .eq('user_id', context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? {
+      provider: 'iris',
+      environment: 'sandbox',
+      connection_status: 'not_connected',
+      authorization_status: 'not_connected',
+      authorized_gstin: '',
+      gstin_validated_at: null,
+      last_connection_attempt_at: null,
+      last_successful_connection_at: null,
+      authorization_updated_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      validated_legal_name: null,
+      validated_trade_name: null,
+    };
+  });
+
+export const testEInvoiceConnection = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { environment: EInvoiceEnvironment }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: settings } = await context.supabase.from('gst_settings').select('gstin').eq('user_id', context.userId).maybeSingle();
+    const gstin = settings?.gstin?.trim().toUpperCase() ?? '';
+    if (!gstin) return { success: false, errorMessage: 'Save the business GSTIN before testing IRIS.' };
+    const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
+    const provider = await getEInvoiceProvider(data.environment, gstin);
+    const attemptedAt = new Date().toISOString();
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    await supabaseAdmin.from('gst_einvoice_connections').upsert({
+      user_id: context.userId,
+      provider: 'iris',
+      environment: data.environment,
+      connection_status: 'not_connected',
+      authorization_status: provider.configured ? 'pending_authorization' : 'not_connected',
+      authorized_gstin: '',
+      last_connection_attempt_at: attemptedAt,
+      last_error_code: null,
+      last_error_message: null,
+    }, { onConflict: 'user_id' });
+    const result = provider.configured
+      ? await provider.testConnection()
+      : { success: false, errorCode: 'PROVIDER_NOT_CONFIGURED', errorMessage: `IRIS ${data.environment} credentials are not configured.` };
+    const errorMessage = result.success ? null : sanitizeProviderError(result.errorMessage);
+    await supabaseAdmin.from('gst_einvoice_connections').upsert({
+      user_id: context.userId,
+      provider: 'iris',
+      environment: data.environment,
+      connection_status: result.success ? 'connected' : 'failed',
+      authorization_status: result.success ? 'authorized' : 'failed',
+      authorized_gstin: result.success ? gstin : '',
+      last_connection_attempt_at: attemptedAt,
+      last_successful_connection_at: result.success ? attemptedAt : undefined,
+      authorization_updated_at: attemptedAt,
+      last_error_code: result.success ? null : (result.errorCode ?? 'IRIS_CONNECTION_FAILED'),
+      last_error_message: errorMessage,
+    }, { onConflict: 'user_id' });
+    return { success: result.success, configured: provider.configured, environment: data.environment, errorMessage };
+  });
+
+export const validateBusinessGstin = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ data: settings }, { data: connection }] = await Promise.all([
+      context.supabase.from('gst_settings').select('gstin').eq('user_id', context.userId).maybeSingle(),
+      context.supabase.from('gst_einvoice_connections').select('*').eq('user_id', context.userId).maybeSingle(),
+    ]);
+    const gstin = settings?.gstin?.trim().toUpperCase() ?? '';
+    if (!gstin) return { success: false, errorMessage: 'Save the business GSTIN before validation.' };
+    if (!connection || connection.connection_status !== 'connected' || connection.authorization_status !== 'authorized') {
+      return { success: false, errorMessage: 'Connect and authorize IRIS before validating the GSTIN.' };
+    }
+    const environment = connection.environment as EInvoiceEnvironment;
+    const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
+    const provider = await getEInvoiceProvider(environment, gstin);
+    if (!provider.configured) return { success: false, errorMessage: 'IRIS credentials are not configured.' };
+    const result = await provider.validateGstin(gstin);
+    const details = result.details ?? {};
+    const errorMessage = result.success ? null : sanitizeProviderError(result.errorMessage);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    await supabaseAdmin.from('gst_einvoice_connections').update({
+      gstin_validated_at: result.success ? new Date().toISOString() : null,
+      validated_legal_name: result.success ? readText(details, ['LegalName', 'LglNm', 'legalName']) : null,
+      validated_trade_name: result.success ? readText(details, ['TradeName', 'TrdNm', 'tradeName']) : null,
+      validated_address: result.success ? details as never : null,
+      last_error_code: result.success ? null : (result.errorCode ?? 'GSTIN_VALIDATION_FAILED'),
+      last_error_message: errorMessage,
+    }).eq('user_id', context.userId);
+    return { success: result.success, gstin, legalName: readText(details, ['LegalName', 'LglNm', 'legalName']), tradeName: readText(details, ['TradeName', 'TrdNm', 'tradeName']), errorMessage };
   });
 
 export const listGstInvoices = createServerFn({ method: 'GET' })
@@ -263,11 +377,14 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
       };
     }
 
-    const { data: items } = await context.supabase
+    const [{ data: items }, { data: connection }] = await Promise.all([
+      context.supabase
       .from('gst_invoice_items')
       .select('*')
       .eq('gst_invoice_id', invoice.id)
-      .order('line_no');
+      .order('line_no'),
+      context.supabase.from('gst_einvoice_connections').select('*').eq('user_id', context.userId).maybeSingle(),
+    ]);
 
     const invalidItem = (items ?? []).find(item => !item.hsn_sac.trim() || !item.gst_rate_configured);
     if (invalidItem) {
@@ -276,13 +393,29 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
       return { success: false, alreadyGenerated: false, apiConnected: false, errorMessage: message };
     }
 
+    if (!connection || connection.connection_status !== 'connected' || connection.authorization_status !== 'authorized') {
+      return { success: false, alreadyGenerated: false, apiConnected: false, errorMessage: 'IRIS is not connected and authorized for this GSTIN.' };
+    }
+    if (connection.authorized_gstin !== invoice.seller_gstin) {
+      return { success: false, alreadyGenerated: false, apiConnected: true, errorMessage: 'This seller GSTIN is not authorized on the active IRIS connection.' };
+    }
+    const { isValidGstin } = await import('@/lib/gst');
+    if (!isValidGstin(invoice.seller_gstin) || !isValidGstin(invoice.buyer_gstin)) {
+      return { success: false, alreadyGenerated: false, apiConnected: true, errorMessage: 'A valid seller and buyer GSTIN is required before submission.' };
+    }
+
+    const { data: lockToken } = await context.supabase.rpc('claim_einvoice_submission', { _invoice_id: invoice.id });
+    if (!lockToken) {
+      return { success: false, alreadyGenerated: false, apiConnected: true, errorMessage: 'This invoice is already being submitted. Refresh before retrying.' };
+    }
+
     const { buildIrpPayload } = await import('@/lib/einvoice/payload.server');
     const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-
     const payload = buildIrpPayload(invoice, items ?? []);
-    const provider = getEInvoiceProvider();
+    const provider = await getEInvoiceProvider(connection.environment as EInvoiceEnvironment, invoice.seller_gstin);
     if (!provider.configured) {
+      await context.supabase.rpc('release_einvoice_claim', { _invoice_id: invoice.id, _lock_token: lockToken });
       return {
         success: false,
         alreadyGenerated: false,
@@ -290,7 +423,11 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
         errorMessage: 'API Not Connected. This invoice is saved in TapTrack only and has not been submitted to IRP or GSTN.',
       };
     }
-    const result = await provider.generate(payload);
+    const { createHash } = await import('node:crypto');
+    const payloadHash = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+    const documentKey = `${invoice.seller_gstin}|INV|${invoice.invoice_no}|${invoice.invoice_date.slice(0, 4)}`;
+    const requestStartedAt = new Date().toISOString();
+    const result = await provider.generate(payload, documentKey);
     const completeSuccess = Boolean(
       result.success && result.irn?.trim() && result.ackNo?.trim() && result.ackDate?.trim() && result.signedQr?.trim(),
     );
@@ -308,6 +445,18 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
       gst_invoice_id: invoice.id,
       action: 'generate',
       provider: provider.name,
+      gstin: invoice.seller_gstin,
+      api_environment: provider.environment,
+      request_status: safeResult.success ? 'succeeded' : 'failed',
+      provider_request_id: safeResult.providerRequestId ?? null,
+      document_key: documentKey,
+      payload_hash: payloadHash,
+      irn: safeResult.success ? safeResult.irn : null,
+      ack_no: safeResult.success ? safeResult.ackNo : null,
+      ack_date: safeResult.success ? safeResult.ackDate : null,
+      retry_attempt: invoice.attempt_count + 1,
+      request_started_at: requestStartedAt,
+      response_received_at: new Date().toISOString(),
       http_status: safeResult.httpStatus ?? null,
       success: safeResult.success,
       request_payload: payload as never,
@@ -324,6 +473,10 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
           ack_date: safeResult.ackDate ?? null,
           signed_qr: safeResult.signedQr ?? null,
           signed_invoice: safeResult.signedInvoice ?? null,
+          einvoice_provider: provider.name,
+          einvoice_environment: provider.environment,
+          provider_request_id: safeResult.providerRequestId ?? null,
+          provider_document_id: documentKey,
           einvoice_validation_error: null,
           last_error_code: null,
           last_error_message: null,
@@ -338,7 +491,8 @@ export const generateEInvoice = createServerFn({ method: 'POST' })
           last_attempt_at: new Date().toISOString(),
         };
 
-    await context.supabase.from('gst_invoices').update(update).eq('id', invoice.id);
+    await context.supabase.from('gst_invoices').update(update).eq('id', invoice.id).eq('submission_lock_token', lockToken);
+    await context.supabase.rpc('release_einvoice_claim', { _invoice_id: invoice.id, _lock_token: lockToken });
 
     return {
       success: safeResult.success,
@@ -364,11 +518,19 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
       return { success: false, errorMessage: 'This invoice has no active IRN to cancel.' };
     }
 
+    const { data: connection } = await context.supabase.from('gst_einvoice_connections').select('*').eq('user_id', context.userId).maybeSingle();
+    if (!connection || connection.connection_status !== 'connected' || connection.authorization_status !== 'authorized') {
+      return { success: false, apiConnected: false, errorMessage: 'IRIS is not connected and authorized.' };
+    }
+    const { data: lockToken } = await context.supabase.rpc('claim_einvoice_cancellation', { _invoice_id: invoice.id });
+    if (!lockToken) return { success: false, apiConnected: true, errorMessage: 'This IRN is already being processed. Refresh before retrying.' };
+
     const { getEInvoiceProvider } = await import('@/lib/einvoice/provider.server');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
 
-    const provider = getEInvoiceProvider();
+    const provider = await getEInvoiceProvider(connection.environment as EInvoiceEnvironment, invoice.seller_gstin);
     if (!provider.configured) {
+      await context.supabase.rpc('release_einvoice_claim', { _invoice_id: invoice.id, _lock_token: lockToken });
       return { success: false, apiConnected: false, errorMessage: 'API Not Connected. No cancellation was submitted.' };
     }
     const providerResult = await provider.cancel({
@@ -390,6 +552,17 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
       gst_invoice_id: invoice.id,
       action: 'cancel',
       provider: provider.name,
+      gstin: invoice.seller_gstin,
+      api_environment: provider.environment,
+      request_status: result.success ? 'succeeded' : 'failed',
+      provider_request_id: result.providerRequestId ?? null,
+      document_key: invoice.provider_document_id,
+      irn: invoice.irn,
+      ack_no: invoice.ack_no,
+      ack_date: invoice.ack_date,
+      retry_attempt: invoice.attempt_count + 1,
+      request_started_at: new Date().toISOString(),
+      response_received_at: new Date().toISOString(),
       http_status: result.httpStatus ?? null,
       success: result.success,
       request_payload: { irn: invoice.irn, reasonCode: data.reasonCode, remark: data.remark },
@@ -418,6 +591,7 @@ export const cancelEInvoice = createServerFn({ method: 'POST' })
         })
         .eq('id', invoice.id);
     }
+    await context.supabase.rpc('release_einvoice_claim', { _invoice_id: invoice.id, _lock_token: lockToken });
 
     return {
       success: result.success,

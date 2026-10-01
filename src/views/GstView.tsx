@@ -6,10 +6,10 @@ import {
   useGstInvoiceDetail,
   useGstInvoices,
   useGstSettings,
+  useEInvoiceConnection,
 } from '@/hooks/useGst';
 import {
   CANCEL_REASONS,
-  EINVOICE_API_CONNECTED,
   EINVOICE_STATUS_LABELS,
   canCancelIrn,
   type EInvoiceStatus,
@@ -35,6 +35,8 @@ export function GstView() {
   const [cancelRemark, setCancelRemark] = useState('');
 
   const { settings } = useGstSettings();
+  const connection = useEInvoiceConnection();
+  const apiConnected = connection.data?.connection_status === 'connected' && connection.data.authorization_status === 'authorized';
   const { data: invoices = [], isLoading, error, refetch } = useGstInvoices();
   const detail = useGstInvoiceDetail(selected);
   const generate = useGenerateEInvoice();
@@ -65,8 +67,8 @@ export function GstView() {
         <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full ${settings.gstEnabled ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-600/30' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
           GST billing {settings.gstEnabled ? 'ON' : 'OFF'}
         </span>
-        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-600/30">
-          API Not Connected
+        <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full border ${apiConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-600/30' : 'bg-red-500/10 text-red-400 border-red-600/30'}`}>
+          {apiConnected ? `${connection.data?.environment === 'production' ? 'Production' : 'Sandbox'} Connected` : 'API Not Connected'}
         </span>
       </div>
 
@@ -149,7 +151,7 @@ export function GstView() {
                     {filtered.map(inv => {
                       const status = inv.einvoice_status as EInvoiceStatus;
                       const busy = generate.isPending && generate.variables === inv.id;
-                       const canGenerate = EINVOICE_API_CONNECTED && inv.einvoice_required && status !== 'generated' && status !== 'cancelled';
+                       const canGenerate = apiConnected && inv.einvoice_required && status !== 'generated' && status !== 'cancelled';
                       return (
                         <tr key={inv.id} className="hover:bg-zinc-900/50 transition align-top">
                           <td className="p-3 font-mono font-bold text-amber-400">{inv.invoice_no}</td>
@@ -181,10 +183,10 @@ export function GstView() {
                                   {busy ? <><i className="fa-solid fa-spinner fa-spin mr-1" />Working…</> : (status === 'failed' ? 'Retry e-Invoice' : 'Generate e-Invoice')}
                                 </button>
                               )}
-                               {!EINVOICE_API_CONNECTED && inv.einvoice_required && status !== 'generated' && status !== 'cancelled' && (
+                               {!apiConnected && inv.einvoice_required && status !== 'generated' && status !== 'cancelled' && (
                                  <span className="text-[10px] text-zinc-500">API Not Connected</span>
                                )}
-                              {EINVOICE_API_CONNECTED && status === 'generated' && canCancelIrn(inv.ack_date) && (
+                               {apiConnected && status === 'generated' && canCancelIrn(inv.ack_date) && (
                                 <button
                                   onClick={() => { setCancelFor(inv.id); setCancelRemark(''); }}
                                   className="text-red-400 hover:text-red-300 text-[11px]"
