@@ -233,8 +233,8 @@ export function GstSettingsForm() {
           <button type="button" onClick={() => testConnection.mutate(environment)} disabled={testConnection.isPending || !form.gstin} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
             {testConnection.isPending ? 'Testing…' : `Test ${environment === 'sandbox' ? 'Sandbox' : 'Production'} Connection`}
           </button>
-          <button type="button" onClick={() => validateGstin.mutate()} disabled={!connected || !authorized || validateGstin.isPending} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
-            {validateGstin.isPending ? 'Validating…' : 'Validate GSTIN'}
+          <button type="button" onClick={() => validateGstin.mutate()} disabled={!connected || validateGstin.isPending} className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 px-3 text-xs disabled:opacity-50">
+            {validateGstin.isPending ? 'Validating…' : 'Validate & Authorize GSTIN'}
           </button>
         </div>
         <p className="mt-2 text-[10px] text-zinc-600">Production requires separately configured IRIS production credentials and is never enabled automatically.</p>
