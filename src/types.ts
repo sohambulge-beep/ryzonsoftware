@@ -212,7 +212,7 @@ export interface AppData {
 export type ViewId =
   | 'dashboard' | 'pos' | 'billing' | 'customers' | 'expenses'
   | 'inventory' | 'suppliers' | 'payments' | 'profitloss'
-  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings' | 'staff' | 'gst';
+  | 'reports' | 'backup' | 'owner' | 'insights' | 'settings' | 'staff' | 'gst' | 'tableskot';
 
 export type ModalId =
   | 'purchase' | 'supplier' | 'payment' | 'customer' | 'beer'
