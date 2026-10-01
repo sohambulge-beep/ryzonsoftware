@@ -21,6 +21,7 @@ import { InsightsView } from "@/views/InsightsView";
 import { SettingsView } from "@/views/SettingsView";
 import { StaffView } from "@/views/StaffView";
 import { GstView } from "@/views/GstView";
+import { TablesKotView } from "@/views/TablesKotView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";
@@ -86,6 +87,7 @@ function AppContent() {
     settings: <SettingsView />,
     staff: <StaffView />,
     gst: <GstView />,
+        tableskot: <TablesKotView />,
   };
 
   const gate = VIEW_FEATURE[currentView];
