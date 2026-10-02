@@ -44,6 +44,72 @@ export type Database = {
         }
         Relationships: []
       }
+      excise_brands: {
+        Row: {
+          bottles_per_case: number
+          category: string
+          created_at: string
+          id: string
+          name: string
+          rate: number
+          size_ml: number
+          user_id: string
+        }
+        Insert: {
+          bottles_per_case?: number
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+          rate?: number
+          size_ml: number
+          user_id?: string
+        }
+        Update: {
+          bottles_per_case?: number
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          rate?: number
+          size_ml?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      excise_settings: {
+        Row: {
+          created_at: string
+          flr2_no: string
+          hotel_name: string
+          id: string
+          licence_no: string
+          permit_holder_no: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          flr2_no?: string
+          hotel_name?: string
+          id?: string
+          licence_no?: string
+          permit_holder_no?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          flr2_no?: string
+          hotel_name?: string
+          id?: string
+          licence_no?: string
+          permit_holder_no?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gst_einvoice_connections: {
         Row: {
           authorization_status: string
