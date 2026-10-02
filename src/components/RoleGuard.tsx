@@ -60,7 +60,7 @@ export function canAccessModule(role: AppRole, permissions: PermissionKey[], mod
 }
 
 /** Ye views permission-list ke bahar hain — sabko dikhte hain. */
-const ALWAYS_ALLOWED = ["dashboard", "settings", "owner", "profitloss", "tableskot"];
+const ALWAYS_ALLOWED = ["dashboard", "settings", "owner", "profitloss", "tableskot", "excise"];
 
 /** Sidebar ke items ko role ke hisaab se filter karta hai. */
 export function filterItemsForRole<T extends { id: string }>(

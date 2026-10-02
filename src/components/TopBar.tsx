@@ -15,6 +15,7 @@ const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   expenses: { title: 'Bar Operating Expenses', subtitle: 'Log maintenance, CO2, utilities, and venue expenditures' },
   inventory: { title: 'Stock & Keg Line Management', subtitle: 'Live keg levels, draft calibration and pour monitoring' },
     tableskot: { title: 'Tables & KOT', subtitle: 'Table-wise orders, KOT printing and bill settlement for dine-in' },
+    excise: { title: 'Excise', subtitle: 'Licence details and brand register' },
   suppliers: { title: 'Suppliers & Purchases', subtitle: 'Record keg purchases with automatic inventory restock and cost tracking' },
   payments: { title: 'Customer Payments & Credit Ledger', subtitle: 'Record tab payments, track balances, and inspect transaction logs' },
   profitloss: { title: 'Profit & Loss Statement', subtitle: 'Gross margin, product cost (COGS), operating expenses and net profit' },

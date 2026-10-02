@@ -20,6 +20,7 @@ const NAV_ITEMS: {
       { id: 'expenses', label: 'Expenses', icon: 'fa-solid fa-money-bill-wave' },
       { id: 'inventory', label: 'Stock & Kegs', icon: 'fa-solid fa-boxes-stacked' },
       { id: 'tableskot', label: 'Tables & KOT', icon: 'fa-solid fa-chair', iconClass: 'text-amber-400' },
+      { id: 'excise', label: 'Excise', icon: 'fa-solid fa-wine-bottle', iconClass: 'text-amber-400' },
       { id: 'staff', label: 'Staff', icon: 'fa-solid fa-user-tie', iconClass: 'text-amber-400' },
     ],
   },
