@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StaffModal } from '@/modals/StaffModal';
+import { StaffPermissionsModal } from '@/modals/StaffPermissionsModal';
 import { AttendanceTab } from '@/components/staff/AttendanceTab';
 import { RosterTab } from '@/components/staff/RosterTab';
 import { SalaryTab } from '@/components/staff/SalaryTab';
@@ -28,6 +29,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 export function StaffView() {
   const [tab, setTab] = useState<TabId>('team');
   const [modalOpen, setModalOpen] = useState(false);
+  const [permsOpen, setPermsOpen] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
 
   const { data: role = 'owner' } = useMyRole();
@@ -55,6 +57,11 @@ export function StaffView() {
             <span className="ml-2 text-amber-400 font-mono uppercase text-[10px]">Signed in as {role}</span>
           </p>
         </div>
+        {role === 'owner' && (
+          <button onClick={() => setPermsOpen(true)} className="bg-zinc-900 border border-zinc-700 text-zinc-200 font-semibold rounded-lg py-2.5 px-4 text-xs flex items-center gap-2 hover:bg-zinc-800 transition">
+            <i className="fa-solid fa-user-shield" /> Roles & Permissions
+          </button>
+        )}
         {canManageTeam && (
           <button onClick={openNew} className="bg-gradient-to-br from-amber-400 to-amber-600 text-zinc-900 font-semibold rounded-lg py-2.5 px-4 text-xs flex items-center gap-2 hover:brightness-110 transition">
             <i className="fa-solid fa-user-plus" /> Add Staff
@@ -149,6 +156,7 @@ export function StaffView() {
       {tab === 'activity' && <ActivityTab />}
 
       <StaffModal open={modalOpen} onClose={() => setModalOpen(false)} editing={editing} canEditSalary={role === 'owner'} />
+      <StaffPermissionsModal open={permsOpen} onClose={() => setPermsOpen(false)} />
     </div>
   );
 }

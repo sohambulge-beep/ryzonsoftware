@@ -50,6 +50,20 @@
       "when": 1790825901465,
       "tag": "0006_add_iris_einvoice_integration_state",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790919276908,
+      "tag": "0007_tables_kot_staff_roles_photo_stock",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790919304518,
+      "tag": "0008_stock_photos_storage_policies",
+      "breakpoints": true
     }
   ]
 }

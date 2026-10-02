@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      dining_tables: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          seats: number
+          sort_order: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          seats?: number
+          sort_order?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          seats?: number
+          sort_order?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gst_einvoice_connections: {
         Row: {
           authorization_status: string
@@ -486,6 +516,101 @@ export type Database = {
         }
         Relationships: []
       }
+      kot: {
+        Row: {
+          created_at: string
+          id: string
+          items: Json
+          kot_no: number
+          note: string
+          order_id: string
+          table_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items?: Json
+          kot_no: number
+          note?: string
+          order_id: string
+          table_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          kot_no?: number
+          note?: string
+          order_id?: string
+          table_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kot_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "table_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dining_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_stock_movements: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          photo_id: string | null
+          product_id: string | null
+          quantity_change: number
+          source: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          photo_id?: string | null
+          product_id?: string | null
+          quantity_change: number
+          source?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          photo_id?: string | null
+          product_id?: string | null
+          quantity_change?: number
+          source?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_stock_movements_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "stock_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           bar_name: string | null
@@ -699,6 +824,36 @@ export type Database = {
           },
         ]
       }
+      staff_roles: {
+        Row: {
+          business_owner_id: string
+          created_at: string
+          id: string
+          name: string
+          permissions: string[]
+          role: string
+          user_id: string
+        }
+        Insert: {
+          business_owner_id: string
+          created_at?: string
+          id?: string
+          name?: string
+          permissions?: string[]
+          role?: string
+          user_id: string
+        }
+        Update: {
+          business_owner_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          permissions?: string[]
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_salary_payments: {
         Row: {
           advance: number
@@ -808,6 +963,77 @@ export type Database = {
           },
         ]
       }
+      stock_photos: {
+        Row: {
+          created_at: string | null
+          id: string
+          photo_hash: string
+          photo_path: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          photo_hash: string
+          photo_path: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          photo_hash?: string
+          photo_path?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      table_orders: {
+        Row: {
+          billed_at: string | null
+          created_at: string
+          id: string
+          invoice_id: string | null
+          items: Json
+          opened_at: string
+          status: string
+          table_id: string
+          user_id: string
+        }
+        Insert: {
+          billed_at?: string | null
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          items?: Json
+          opened_at?: string
+          status?: string
+          table_id: string
+          user_id: string
+        }
+        Update: {
+          billed_at?: string | null
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          items?: Json
+          opened_at?: string
+          status?: string
+          table_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dining_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -853,6 +1079,7 @@ export type Database = {
       is_manager_or_owner: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       my_staff_id: { Args: never; Returns: string }
+      next_kot_no: { Args: { p_user_id: string }; Returns: number }
       release_einvoice_claim: {
         Args: { _invoice_id: string; _lock_token: string }
         Returns: boolean
