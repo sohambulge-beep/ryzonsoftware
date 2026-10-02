@@ -3,6 +3,7 @@ import type { ViewId } from '@/types';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { usePlan, type FeatureId } from '@/lib/plan';
+import { useRole, filterItemsForRole } from '@/components/RoleGuard';
 
 const NAV_ITEMS: {
   section: string;
@@ -45,6 +46,7 @@ const VIEW_FEATURE: Partial<Record<ViewId, FeatureId>> = {
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { db, currentView, navigate } = useStore();
   const { hasFeature, plan } = usePlan();
+  const { role, permissions, loading: roleLoading } = useRole();
   const [clock, setClock] = useState('');
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 {group.section}
               </div>
               <nav className="space-y-1">
-                {group.items.filter(item => {
+                {(roleLoading ? group.items : filterItemsForRole(group.items, role, permissions)).filter(item => {
                   const feature = VIEW_FEATURE[item.id];
                   return !feature || hasFeature(feature);
                 }).map(item => {

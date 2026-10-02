@@ -31,6 +31,7 @@ import { ExpenseModal } from "@/modals/ExpenseModal";
 import { PurchaseModal } from "@/modals/PurchaseModal";
 import { InvoiceViewModal } from "@/modals/InvoiceViewModal";
 import { GstInvoiceSync } from "@/components/gst/GstInvoiceSync";
+import { RoleProvider, RoleGuard } from "@/components/RoleGuard";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -72,22 +73,22 @@ function AppContent() {
 
   const views: Record<string, React.ReactNode> = {
     dashboard: <DashboardView />,
-    pos: <PosView />,
-    billing: <BillingView />,
-    customers: <CustomersView />,
-    expenses: <ExpensesView />,
-    inventory: <InventoryView />,
-    suppliers: <SuppliersView />,
-    payments: <PaymentsView />,
+    pos: <RoleGuard module="pos"><PosView /></RoleGuard>,
+    billing: <RoleGuard module="billing"><BillingView /></RoleGuard>,
+    customers: <RoleGuard module="customers"><CustomersView /></RoleGuard>,
+    expenses: <RoleGuard module="expenses"><ExpensesView /></RoleGuard>,
+    inventory: <RoleGuard module="inventory"><InventoryView /></RoleGuard>,
+    suppliers: <RoleGuard module="suppliers"><SuppliersView /></RoleGuard>,
+    payments: <RoleGuard module="payments"><PaymentsView /></RoleGuard>,
     profitloss: <ProfitLossView />,
-    reports: <ReportsView />,
-    backup: <BackupView />,
+    reports: <RoleGuard module="reports"><ReportsView /></RoleGuard>,
+    backup: <RoleGuard module="backup"><BackupView /></RoleGuard>,
     owner: <OwnerDashboardView />,
-    insights: <InsightsView />,
+    insights: <RoleGuard module="insights"><InsightsView /></RoleGuard>,
     settings: <SettingsView />,
-    staff: <StaffView />,
-    gst: <GstView />,
-        tableskot: <TablesKotView />,
+    staff: <RoleGuard module="staff"><StaffView /></RoleGuard>,
+    gst: <RoleGuard module="gst"><GstView /></RoleGuard>,
+    tableskot: <TablesKotView />,
   };
 
   const gate = VIEW_FEATURE[currentView];
@@ -147,10 +148,12 @@ function Index() {
 
   return (
     <PlanProvider>
+    <RoleProvider>
     <StoreProvider>
       {showIntro && <IntroAnimation onFinish={handleIntroFinish} />}
       <AppContent />
     </StoreProvider>
+    </RoleProvider>
     </PlanProvider>
   );
 }
