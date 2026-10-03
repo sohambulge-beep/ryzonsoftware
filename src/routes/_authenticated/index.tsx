@@ -22,7 +22,8 @@ import { SettingsView } from "@/views/SettingsView";
 import { StaffView } from "@/views/StaffView";
 import { GstView } from "@/views/GstView";
 import { TablesKotView } from "@/views/TablesKotView";
-import ExciseView from "@/views/ExciseView";
+import ExciseView from "@/views/ExciseTabsView";
+import BankStatementView from "@/views/BankStatementView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";
@@ -91,6 +92,7 @@ function AppContent() {
     gst: <RoleGuard module="gst"><GstView /></RoleGuard>,
     tableskot: <TablesKotView />,
     excise: <ExciseView />,
+    bank: <BankStatementView />,
   };
 
   const gate = VIEW_FEATURE[currentView];
