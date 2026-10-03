@@ -110,6 +110,84 @@ export type Database = {
         }
         Relationships: []
       }
+      excise_tp_items: {
+        Row: {
+          bottles: number
+          bottles_total: number
+          brand_id: string
+          cases: number
+          id: string
+          receipt_id: string
+          user_id: string
+        }
+        Insert: {
+          bottles?: number
+          bottles_total?: number
+          brand_id: string
+          cases?: number
+          id?: string
+          receipt_id: string
+          user_id?: string
+        }
+        Update: {
+          bottles?: number
+          bottles_total?: number
+          brand_id?: string
+          cases?: number
+          id?: string
+          receipt_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excise_tp_items_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excise_tp_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "excise_tp_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      excise_tp_receipts: {
+        Row: {
+          auto_tp_no: string
+          created_at: string
+          id: string
+          party: string
+          receipt_date: string
+          status: string
+          tp_no: string
+          user_id: string
+        }
+        Insert: {
+          auto_tp_no?: string
+          created_at?: string
+          id?: string
+          party?: string
+          receipt_date?: string
+          status?: string
+          tp_no: string
+          user_id?: string
+        }
+        Update: {
+          auto_tp_no?: string
+          created_at?: string
+          id?: string
+          party?: string
+          receipt_date?: string
+          status?: string
+          tp_no?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gst_einvoice_connections: {
         Row: {
           authorization_status: string
@@ -1132,6 +1210,16 @@ export type Database = {
       }
       claim_einvoice_submission: {
         Args: { _invoice_id: string }
+        Returns: string
+      }
+      create_excise_tp_receipt: {
+        Args: {
+          p_auto_tp_no: string
+          p_items: Json
+          p_party: string
+          p_receipt_date: string
+          p_tp_no: string
+        }
         Returns: string
       }
       current_role_name: { Args: never; Returns: string }
