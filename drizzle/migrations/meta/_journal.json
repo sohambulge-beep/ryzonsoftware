@@ -85,6 +85,13 @@
       "when": 1791002341919,
       "tag": "0011_bank_statement",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791002361224,
+      "tag": "0012_excise_daily_sales",
+      "breakpoints": true
     }
   ]
 }

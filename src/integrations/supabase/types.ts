@@ -151,6 +151,48 @@ export type Database = {
         }
         Relationships: []
       }
+      excise_daily_sales: {
+        Row: {
+          bottles: number
+          brand_id: string
+          created_at: string
+          id: string
+          sale_date: string
+          user_id: string
+        }
+        Insert: {
+          bottles: number
+          brand_id: string
+          created_at?: string
+          id?: string
+          sale_date?: string
+          user_id?: string
+        }
+        Update: {
+          bottles?: number
+          brand_id?: string
+          created_at?: string
+          id?: string
+          sale_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excise_daily_sales_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excise_daily_sales_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_stock_summary"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
       excise_settings: {
         Row: {
           created_at: string
@@ -219,6 +261,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "excise_brands"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excise_tp_items_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_stock_summary"
+            referencedColumns: ["brand_id"]
           },
           {
             foreignKeyName: "excise_tp_items_receipt_id_fkey"
@@ -1275,7 +1324,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      excise_stock_summary: {
+        Row: {
+          brand_id: string | null
+          category: string | null
+          name: string | null
+          received: number | null
+          size_ml: number | null
+          sold: number | null
+        }
+        Insert: {
+          brand_id?: string | null
+          category?: string | null
+          name?: string | null
+          received?: never
+          size_ml?: number | null
+          sold?: never
+        }
+        Update: {
+          brand_id?: string | null
+          category?: string | null
+          name?: string | null
+          received?: never
+          size_ml?: number | null
+          sold?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       claim_einvoice_cancellation: {
