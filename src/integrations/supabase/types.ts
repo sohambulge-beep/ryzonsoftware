@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          last4: string
+          name: string
+          opening_balance: number
+          opening_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last4?: string
+          name: string
+          opening_balance?: number
+          opening_date?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last4?: string
+          name?: string
+          opening_balance?: number
+          opening_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          description: string
+          direction: string
+          entry_date: string
+          id: string
+          reference: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string
+          description?: string
+          direction: string
+          entry_date?: string
+          id?: string
+          reference?: string
+          user_id?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          description?: string
+          direction?: string
+          entry_date?: string
+          id?: string
+          reference?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dining_tables: {
         Row: {
           created_at: string
@@ -77,6 +151,48 @@ export type Database = {
         }
         Relationships: []
       }
+      excise_daily_sales: {
+        Row: {
+          bottles: number
+          brand_id: string
+          created_at: string
+          id: string
+          sale_date: string
+          user_id: string
+        }
+        Insert: {
+          bottles: number
+          brand_id: string
+          created_at?: string
+          id?: string
+          sale_date?: string
+          user_id?: string
+        }
+        Update: {
+          bottles?: number
+          brand_id?: string
+          created_at?: string
+          id?: string
+          sale_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excise_daily_sales_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excise_daily_sales_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_stock_summary"
+            referencedColumns: ["brand_id"]
+          },
+        ]
+      }
       excise_settings: {
         Row: {
           created_at: string
@@ -106,6 +222,91 @@ export type Database = {
           licence_no?: string
           permit_holder_no?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      excise_tp_items: {
+        Row: {
+          bottles: number
+          bottles_total: number
+          brand_id: string
+          cases: number
+          id: string
+          receipt_id: string
+          user_id: string
+        }
+        Insert: {
+          bottles?: number
+          bottles_total?: number
+          brand_id: string
+          cases?: number
+          id?: string
+          receipt_id: string
+          user_id?: string
+        }
+        Update: {
+          bottles?: number
+          bottles_total?: number
+          brand_id?: string
+          cases?: number
+          id?: string
+          receipt_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excise_tp_items_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excise_tp_items_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "excise_stock_summary"
+            referencedColumns: ["brand_id"]
+          },
+          {
+            foreignKeyName: "excise_tp_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "excise_tp_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      excise_tp_receipts: {
+        Row: {
+          auto_tp_no: string
+          created_at: string
+          id: string
+          party: string
+          receipt_date: string
+          status: string
+          tp_no: string
+          user_id: string
+        }
+        Insert: {
+          auto_tp_no?: string
+          created_at?: string
+          id?: string
+          party?: string
+          receipt_date?: string
+          status?: string
+          tp_no: string
+          user_id?: string
+        }
+        Update: {
+          auto_tp_no?: string
+          created_at?: string
+          id?: string
+          party?: string
+          receipt_date?: string
+          status?: string
+          tp_no?: string
           user_id?: string
         }
         Relationships: []
@@ -1123,7 +1324,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      excise_stock_summary: {
+        Row: {
+          brand_id: string | null
+          category: string | null
+          name: string | null
+          received: number | null
+          size_ml: number | null
+          sold: number | null
+        }
+        Insert: {
+          brand_id?: string | null
+          category?: string | null
+          name?: string | null
+          received?: never
+          size_ml?: number | null
+          sold?: never
+        }
+        Update: {
+          brand_id?: string | null
+          category?: string | null
+          name?: string | null
+          received?: never
+          size_ml?: number | null
+          sold?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       claim_einvoice_cancellation: {
@@ -1132,6 +1359,16 @@ export type Database = {
       }
       claim_einvoice_submission: {
         Args: { _invoice_id: string }
+        Returns: string
+      }
+      create_excise_tp_receipt: {
+        Args: {
+          p_auto_tp_no: string
+          p_items: Json
+          p_party: string
+          p_receipt_date: string
+          p_tp_no: string
+        }
         Returns: string
       }
       current_role_name: { Args: never; Returns: string }
