@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          last4: string
+          name: string
+          opening_balance: number
+          opening_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last4?: string
+          name: string
+          opening_balance?: number
+          opening_date?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last4?: string
+          name?: string
+          opening_balance?: number
+          opening_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          description: string
+          direction: string
+          entry_date: string
+          id: string
+          reference: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string
+          description?: string
+          direction: string
+          entry_date?: string
+          id?: string
+          reference?: string
+          user_id?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          description?: string
+          direction?: string
+          entry_date?: string
+          id?: string
+          reference?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dining_tables: {
         Row: {
           created_at: string

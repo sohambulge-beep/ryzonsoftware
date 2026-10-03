@@ -78,6 +78,13 @@
       "when": 1791002322184,
       "tag": "0010_excise_tp_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791002341919,
+      "tag": "0011_bank_statement",
+      "breakpoints": true
     }
   ]
 }
