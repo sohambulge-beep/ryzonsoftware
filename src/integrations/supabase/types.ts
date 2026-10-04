@@ -1385,6 +1385,15 @@ export type Database = {
           size_ml: number
         }[]
       }
+      excise_stock_register: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          line_date: string
+          line_type: string
+          receipts_qty: number
+          sales_qty: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

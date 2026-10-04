@@ -99,6 +99,13 @@
       "when": 1791086184611,
       "tag": "0013_excise_monthly_return",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791086208044,
+      "tag": "0014_excise_stock_register",
+      "breakpoints": true
     }
   ]
 }
