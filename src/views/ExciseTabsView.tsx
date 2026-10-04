@@ -2,11 +2,17 @@ import { useState } from "react";
 import ExciseView from "@/views/ExciseView";
 import ExciseTpView from "@/views/ExciseTpView";
 import ExciseSalesView from "@/views/ExciseSalesView";
+import ExciseBrandsManageView from "@/views/ExciseBrandsManageView";
+import ExciseFlr4View from "@/views/ExciseFlr4View";
+import ExciseRegisterView from "@/views/ExciseRegisterView";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
   { id: "tp", label: "TP receipts" },
   { id: "sales", label: "Daily sales" },
+  { id: "prices", label: "Brand prices" },
+  { id: "return", label: "Monthly return" },
+  { id: "register", label: "Stock register" },
 ] as const;
 
 export default function ExciseTabsView() {
@@ -30,6 +36,9 @@ export default function ExciseTabsView() {
       {tab === "brands" && <ExciseView />}
       {tab === "tp" && <ExciseTpView />}
       {tab === "sales" && <ExciseSalesView />}
+      {tab === "prices" && <ExciseBrandsManageView />}
+      {tab === "return" && <ExciseFlr4View />}
+      {tab === "register" && <ExciseRegisterView />}
     </div>
   );
 }

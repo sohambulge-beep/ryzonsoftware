@@ -1372,6 +1372,28 @@ export type Database = {
         Returns: string
       }
       current_role_name: { Args: never; Returns: string }
+      excise_monthly_return: {
+        Args: { p_month: number; p_year: number }
+        Returns: {
+          brand_id: string
+          brand_name: string
+          category: string
+          closing_qty: number
+          opening_qty: number
+          receipts_qty: number
+          sales_qty: number
+          size_ml: number
+        }[]
+      }
+      excise_stock_register: {
+        Args: { p_brand_id: string; p_from: string; p_to: string }
+        Returns: {
+          line_date: string
+          line_type: string
+          receipts_qty: number
+          sales_qty: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
