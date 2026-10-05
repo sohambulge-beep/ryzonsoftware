@@ -17,6 +17,7 @@ const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
     tableskot: { title: 'Tables & KOT', subtitle: 'Table-wise orders, KOT printing and bill settlement for dine-in' },
     excise: { title: 'Excise', subtitle: 'Licence details and brand register' },
     bank: { title: 'Bank', subtitle: 'Bank accounts and statement entries' },
+    export: { title: 'Export', subtitle: 'Download your business data as CSV' },
   suppliers: { title: 'Suppliers & Purchases', subtitle: 'Record keg purchases with automatic inventory restock and cost tracking' },
   payments: { title: 'Customer Payments & Credit Ledger', subtitle: 'Record tab payments, track balances, and inspect transaction logs' },
   profitloss: { title: 'Profit & Loss Statement', subtitle: 'Gross margin, product cost (COGS), operating expenses and net profit' },

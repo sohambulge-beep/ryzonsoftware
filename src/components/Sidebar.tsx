@@ -22,6 +22,7 @@ const NAV_ITEMS: {
       { id: 'tableskot', label: 'Tables & KOT', icon: 'fa-solid fa-chair', iconClass: 'text-amber-400' },
       { id: 'excise', label: 'Excise', icon: 'fa-solid fa-wine-bottle', iconClass: 'text-amber-400' },
       { id: 'bank', label: 'Bank', icon: 'fa-solid fa-building-columns', iconClass: 'text-emerald-400' },
+      { id: 'export', label: 'Export', icon: 'fa-solid fa-file-export', iconClass: 'text-cyan-400' },
       { id: 'staff', label: 'Staff', icon: 'fa-solid fa-user-tie', iconClass: 'text-amber-400' },
     ],
   },

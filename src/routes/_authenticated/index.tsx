@@ -23,7 +23,8 @@ import { StaffView } from "@/views/StaffView";
 import { GstView } from "@/views/GstView";
 import { TablesKotView } from "@/views/TablesKotView";
 import ExciseView from "@/views/ExciseTabsView";
-import BankStatementView from "@/views/BankStatementView";
+import BankStatementView from "@/views/BankTabsView";
+import DataExportView from "@/views/DataExportView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";
@@ -93,6 +94,7 @@ function AppContent() {
     tableskot: <TablesKotView />,
     excise: <ExciseView />,
     bank: <BankStatementView />,
+    export: <RoleGuard module="export"><DataExportView /></RoleGuard>,
   };
 
   const gate = VIEW_FEATURE[currentView];
