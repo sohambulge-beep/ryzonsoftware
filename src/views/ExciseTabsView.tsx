@@ -5,6 +5,8 @@ import ExciseSalesView from "@/views/ExciseSalesView";
 import ExciseBrandsManageView from "@/views/ExciseBrandsManageView";
 import ExciseFlr4View from "@/views/ExciseFlr4View";
 import ExciseRegisterView from "@/views/ExciseRegisterView";
+import ExciseValueView from "@/views/ExciseValueView";
+import ExciseOpeningStockView from "@/views/ExciseOpeningStockView";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
@@ -13,6 +15,8 @@ const TABS = [
   { id: "prices", label: "Brand prices" },
   { id: "return", label: "Monthly return" },
   { id: "register", label: "Stock register" },
+  { id: "value", label: "Stock value" },
+  { id: "opening", label: "Opening stock" },
 ] as const;
 
 export default function ExciseTabsView() {
@@ -39,6 +43,8 @@ export default function ExciseTabsView() {
       {tab === "prices" && <ExciseBrandsManageView />}
       {tab === "return" && <ExciseFlr4View />}
       {tab === "register" && <ExciseRegisterView />}
+      {tab === "value" && <ExciseValueView />}
+      {tab === "opening" && <ExciseOpeningStockView />}
     </div>
   );
 }
