@@ -7,6 +7,7 @@ import ExciseFlr4View from "@/views/ExciseFlr4View";
 import ExciseRegisterView from "@/views/ExciseRegisterView";
 import ExciseValueView from "@/views/ExciseValueView";
 import ExciseOpeningStockView from "@/views/ExciseOpeningStockView";
+import ExciseLowStockView from "@/views/ExciseLowStockView";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
@@ -17,6 +18,7 @@ const TABS = [
   { id: "register", label: "Stock register" },
   { id: "value", label: "Stock value" },
   { id: "opening", label: "Opening stock" },
+  { id: "lowstock", label: "Low stock" },
 ] as const;
 
 export default function ExciseTabsView() {
@@ -45,6 +47,7 @@ export default function ExciseTabsView() {
       {tab === "register" && <ExciseRegisterView />}
       {tab === "value" && <ExciseValueView />}
       {tab === "opening" && <ExciseOpeningStockView />}
+      {tab === "lowstock" && <ExciseLowStockView />}
     </div>
   );
 }
