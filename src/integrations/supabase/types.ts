@@ -88,6 +88,74 @@ export type Database = {
           },
         ]
       }
+      bank_transfers: {
+        Row: {
+          amount: number
+          created_at: string
+          credit_entry_id: string
+          debit_entry_id: string
+          from_account_id: string
+          id: string
+          reference: string
+          to_account_id: string
+          transfer_date: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credit_entry_id: string
+          debit_entry_id: string
+          from_account_id: string
+          id?: string
+          reference?: string
+          to_account_id: string
+          transfer_date?: string
+          user_id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credit_entry_id?: string
+          debit_entry_id?: string
+          from_account_id?: string
+          id?: string
+          reference?: string
+          to_account_id?: string
+          transfer_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfers_credit_entry_id_fkey"
+            columns: ["credit_entry_id"]
+            isOneToOne: false
+            referencedRelation: "bank_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transfers_debit_entry_id_fkey"
+            columns: ["debit_entry_id"]
+            isOneToOne: false
+            referencedRelation: "bank_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transfers_from_account_id_fkey"
+            columns: ["from_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transfers_to_account_id_fkey"
+            columns: ["to_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dining_tables: {
         Row: {
           created_at: string
@@ -1359,6 +1427,17 @@ export type Database = {
       }
       claim_einvoice_submission: {
         Args: { _invoice_id: string }
+        Returns: string
+      }
+      create_bank_transfer: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_from: string
+          p_note: string
+          p_reference: string
+          p_to: string
+        }
         Returns: string
       }
       create_excise_tp_receipt: {
