@@ -25,6 +25,7 @@ import { TablesKotView } from "@/views/TablesKotView";
 import ExciseView from "@/views/ExciseTabsView";
 import BankStatementView from "@/views/BankTabsView";
 import DataExportView from "@/views/DataExportView";
+import ActivityLogView from "@/views/ActivityLogView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";
@@ -95,6 +96,7 @@ function AppContent() {
     excise: <ExciseView />,
     bank: <BankStatementView />,
     export: <RoleGuard module="export"><DataExportView /></RoleGuard>,
+    activity: <RoleGuard module="activity"><ActivityLogView /></RoleGuard>,
   };
 
   const gate = VIEW_FEATURE[currentView];
