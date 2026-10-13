@@ -16,6 +16,7 @@ import ExciseHealthCheckView from "@/views/ExciseHealthCheckView";
 import ExciseSummaryView from "@/views/ExciseSummaryView";
 import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
+import ExciseOrderView from "@/views/ExciseOrderView";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
@@ -35,6 +36,7 @@ const TABS = [
   { id: "summary", label: "WhatsApp summary" },
    { id: "dayclose", label: "Day close" },
    { id: "counter", label: "Liquor counter" },
+   { id: "order", label: "Order on WhatsApp" },
 ] as const;
 
 export default function ExciseTabsView() {
@@ -72,6 +74,7 @@ export default function ExciseTabsView() {
       {tab === "summary" && <ExciseSummaryView />}
           {tab === "dayclose" && <DayCloseView />}
           {tab === "counter" && <ExciseCounterView />}
+           {tab === "order" && <ExciseOrderView />}
     </div>
   );
 }
