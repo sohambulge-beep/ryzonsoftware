@@ -17,7 +17,14 @@ interface BackupRow {
   id: string;
   label: string;
   created_at: string;
-  summary: { taps?: number; customers?: number; invoices?: number; expenses?: number; size_kb?: number } | null;
+  summary: {
+    taps?: number;
+    customers?: number;
+    invoices?: number;
+    expenses?: number;
+    size_kb?: number;
+    hash?: string;
+  } | null;
 }
 
 function makeClient(url: string, key: string): SupabaseClient {
@@ -49,6 +56,16 @@ function validAppData(x: any): boolean {
   return !!x.settings && typeof x.settings === "object";
 }
 
+// Small fingerprint of the data, used only to tell whether anything changed since the last backup.
+function hashOf(text: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", {
     day: "2-digit",
@@ -57,6 +74,20 @@ const when = (iso: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+
+function ago(iso: string): { text: string; hours: number } {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return { text: `${mins} minute(s) ago`, hours: mins / 60 };
+  const h = Math.floor(mins / 60);
+  if (h < 48) return { text: `${h} hour(s) ago`, hours: h };
+  return { text: `${Math.floor(h / 24)} day(s) ago`, hours: h };
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const localDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -81,6 +112,7 @@ function Inner() {
   const [signedIn, setSignedIn] = useState("");
   const [backups, setBackups] = useState<BackupRow[]>([]);
   const [label, setLabel] = useState("");
+  const [safetyAt, setSafetyAt] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -109,8 +141,13 @@ function Inner() {
       if (u) setUrl(u);
       if (k) setKey(k);
       if (e) setEmail(e);
+      const raw = localStorage.getItem(LS_SAFETY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.at === "string" && validAppData(parsed.data)) setSafetyAt(parsed.at);
+      }
     } catch {
-      // storage can be blocked; the fields start empty
+      // storage can be blocked or unreadable; the fields start empty
     }
     if (k) {
       (async () => {
@@ -183,9 +220,15 @@ function Inner() {
       setMsg("Sign in first");
       return;
     }
-    const bytes = new Blob([JSON.stringify(db)]).size;
+    const json = JSON.stringify(db);
+    const bytes = new Blob([json]).size;
     if (bytes > MAX_BYTES) {
       setMsg(`Your data is ${Math.round(bytes / 1024)} KB, too big for one cloud backup. Tell the developer.`);
+      return;
+    }
+    const hash = hashOf(json);
+    if (backups[0]?.summary?.hash === hash) {
+      setMsg("Nothing has changed since the last backup, so nothing new was saved.");
       return;
     }
     setBusy(true);
@@ -197,6 +240,7 @@ function Inner() {
         invoices: db.invoices.length,
         expenses: db.expenses.length,
         size_kb: Math.round(bytes / 1024),
+        hash,
       };
       const { error } = await c
         .from("app_backups")
@@ -230,16 +274,19 @@ function Inner() {
         `Restore the backup of ${when(row.created_at)}?\n\n` +
           `This backup: ${incoming.invoices.length} bills, ${incoming.customers.length} customers.\n` +
           `This phone now: ${db.invoices.length} bills, ${db.customers.length} customers.\n\n` +
-          `The data on this phone will be REPLACED. A safety copy of the current data is kept on this phone first.`
+          `The data on this phone will be REPLACED. A safety copy of the current data is kept on this phone first, ` +
+          `and you can undo from this page.`
       );
       if (!ok) {
         setBusy(false);
         return;
       }
+      const at = new Date().toISOString();
       try {
-        localStorage.setItem(LS_SAFETY, JSON.stringify({ at: new Date().toISOString(), data: db }));
+        localStorage.setItem(LS_SAFETY, JSON.stringify({ at, data: db }));
+        setSafetyAt(at);
       } catch {
-        if (!confirm("A safety copy of the current data could not be kept. Restore anyway?")) {
+        if (!confirm("A safety copy of the current data could not be kept, so Undo will not work. Restore anyway?")) {
           setBusy(false);
           return;
         }
@@ -250,6 +297,48 @@ function Inner() {
       setMsg(`Could not restore: ${e.message ?? e}. Nothing was changed on this phone.`);
     }
     setBusy(false);
+  }
+
+  function onUndo() {
+    try {
+      const raw = localStorage.getItem(LS_SAFETY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || !validAppData(parsed.data)) {
+        setMsg("No valid safety copy was found.");
+        return;
+      }
+      if (
+        !confirm(
+          `Go back to the data this phone had before the last restore (saved ${when(parsed.at)})?\n` +
+            `The data on this phone now will be replaced.`
+        )
+      ) {
+        return;
+      }
+      restoreData(parsed.data as AppData);
+      localStorage.removeItem(LS_SAFETY);
+      setSafetyAt("");
+      setMsg("The earlier data of this phone is back.");
+    } catch {
+      setMsg("Could not undo the restore.");
+    }
+  }
+
+  function onDownload() {
+    try {
+      const blob = new Blob([JSON.stringify(db)], { type: "application/json" });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `prime-terminal-data-${localDate()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+      setMsg("Data file downloaded to this phone.");
+    } catch {
+      setMsg("The download did not work here.");
+    }
   }
 
   async function onDelete(row: BackupRow) {
@@ -267,6 +356,9 @@ function Inner() {
     setBusy(false);
   }
 
+  const last = backups[0];
+  const age = last ? ago(last.created_at) : null;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4">
       <h1 className="text-xl font-semibold">Cloud backup</h1>
@@ -274,8 +366,8 @@ function Inner() {
 
       <p className="text-sm text-muted-foreground">
         Saves a copy of all POS data (bills, stock, customers, tabs) in your own cloud database. Each backup is a new
-        version and old ones are never overwritten. Backups are made only when you press the button, not
-        automatically. This is not live sync between phones.
+        version and old ones are not overwritten; only the latest 60 are kept. Backups are made only when you press
+        the button, not automatically. This is not live sync between phones.
       </p>
 
       {!signedIn ? (
@@ -298,7 +390,12 @@ function Inner() {
           </label>
           <label className="block space-y-1">
             <span className="text-sm text-muted-foreground">Email</span>
-            <input className={`${input} w-full`} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              className={`${input} w-full`}
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </label>
           <label className="block space-y-1">
             <span className="text-sm text-muted-foreground">Password</span>
@@ -325,6 +422,18 @@ function Inner() {
 
           <section className="space-y-3">
             <h2 className="font-medium">Save a backup now</h2>
+            {last && age ? (
+              <p className="text-sm">
+                Last backup: {when(last.created_at)} ({age.text})
+              </p>
+            ) : (
+              <p className="text-sm">No backup saved yet.</p>
+            )}
+            {(!age || age.hours >= 24) && (
+              <p className="text-sm rounded-md border p-2">
+                {age ? "The last backup is more than 24 hours old. Take a new one." : "Take your first backup now."}
+              </p>
+            )}
             <label className="block space-y-1">
               <span className="text-sm text-muted-foreground">Note (optional)</span>
               <input
@@ -338,10 +447,27 @@ function Inner() {
             <p className="text-sm text-muted-foreground">
               This phone now has {db.invoices.length} bills, {db.customers.length} customers, {db.taps.length} taps.
             </p>
-            <button className={btn} disabled={busy} onClick={onUpload}>
-              {busy ? "Working..." : "Upload backup now"}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button className={btn} disabled={busy} onClick={onUpload}>
+                {busy ? "Working..." : "Upload backup now"}
+              </button>
+              <button className={btn} disabled={busy} onClick={onDownload}>
+                Download data file
+              </button>
+            </div>
           </section>
+
+          {safetyAt && (
+            <section className="space-y-2">
+              <h2 className="font-medium">Undo last restore</h2>
+              <p className="text-sm text-muted-foreground">
+                Before the last restore this phone's data was kept safe ({when(safetyAt)}).
+              </p>
+              <button className={btn} disabled={busy} onClick={onUndo}>
+                Bring back the earlier data
+              </button>
+            </section>
+          )}
 
           <section className="space-y-3">
             <h2 className="font-medium">Saved backups ({backups.length})</h2>
