@@ -18,6 +18,7 @@ import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
 import ExciseOrderView from "@/views/ExciseOrderView";
 import CloudBackupView from "@/components/CloudBackupView";
+import PosReportView from "@/components/PosReportView";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
@@ -40,6 +41,7 @@ const TABS = [
    { id: "order", label: "Order on WhatsApp" },
    { id: "cloud", label: "Cloud backup" },
 ] as const;
+{ id: "posreport", label: "POS report" },
 
 export default function ExciseTabsView() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("brands");
@@ -79,5 +81,6 @@ export default function ExciseTabsView() {
            {tab === "order" && <ExciseOrderView />}
            {tab === "cloud" && <CloudBackupView />}
     </div>
+       {tab === "posreport" && <PosReportView />}
   );
 }
