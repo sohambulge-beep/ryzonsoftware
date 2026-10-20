@@ -56,7 +56,7 @@ async function check(setProblem: (s: string) => void) {
 
     const bytes = new Blob([json]).size;
     if (bytes > MAX_BYTES) {
-      setProblem(`data is too big (${Math.round(bytes / 1024)} KB) for automatic backup`);
+      setProblem(`the data is too big (${Math.round(bytes / 1024)} KB) for automatic backup`);
       return;
     }
 
@@ -64,7 +64,7 @@ async function check(setProblem: (s: string) => void) {
     const client = getClient(url, key);
     const { data: s } = await client.auth.getSession();
     if (!s.session) {
-      setProblem("you are not signed in. Open Excise > Cloud backup and sign in");
+      setProblem("you are not signed in (open Excise, Cloud backup, and sign in)");
       return;
     }
     const summary = {
@@ -112,7 +112,7 @@ function Inner() {
   if (!problem || hidden) return null;
   return (
     <div className="fixed bottom-2 left-2 z-50 flex max-w-xs items-start gap-2 rounded-md border bg-background px-3 py-2 text-xs">
-      <span>Cloud backup problem: {problem}. Open Excise, Cloud backup.</span>
+      <span>Cloud backup problem: {problem}.</span>
       <button className="underline" onClick={() => setHidden(true)}>
         Hide
       </button>
