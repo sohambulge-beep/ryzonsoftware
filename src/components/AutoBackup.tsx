@@ -253,7 +253,7 @@ function Inner() {
   }
 
   return (
-    <div className="fixed bottom-2 left-2 z-50 flex max-w-xs flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs">
+    <div className="fixed bottom-24 left-2 z-50 flex max-w-xs flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs">
       <span style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: color, display: "inline-block" }} />
       <span>{text}</span>
       {online !== false && status !== "syncing" && (
