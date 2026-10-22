@@ -4,6 +4,7 @@ import ExciseTpView from "@/views/ExciseTpView";
 import ExciseSalesView from "@/views/ExciseSalesView";
 import ExciseBrandsManageView from "@/views/ExciseBrandsManageView";
 import ExciseFlr4View from "@/views/ExciseFlr4View";
+import ExciseBulkLitreView from "@/views/ExciseBulkLitreView";
 import ExciseRegisterView from "@/views/ExciseRegisterView";
 import ExciseValueView from "@/views/ExciseValueView";
 import ExciseOpeningStockView from "@/views/ExciseOpeningStockView";
@@ -26,6 +27,7 @@ const TABS = [
   { id: "sales", label: "Daily sales" },
   { id: "prices", label: "Brand prices" },
   { id: "return", label: "Monthly return" },
+  { id: "bulklitre", label: "Bulk litre" },
   { id: "register", label: "Stock register" },
   { id: "value", label: "Stock value" },
   { id: "opening", label: "Opening stock" },
@@ -36,10 +38,10 @@ const TABS = [
   { id: "report", label: "Sales report" },
   { id: "health", label: "Health check" },
   { id: "summary", label: "WhatsApp summary" },
-   { id: "dayclose", label: "Day close" },
-   { id: "counter", label: "Liquor counter" },
-   { id: "order", label: "Order on WhatsApp" },
-   { id: "cloud", label: "Cloud backup" },
+  { id: "dayclose", label: "Day close" },
+  { id: "counter", label: "Liquor counter" },
+  { id: "order", label: "Order on WhatsApp" },
+  { id: "cloud", label: "Cloud backup" },
   { id: "posreport", label: "POS report" },
 ] as const;
 
@@ -66,6 +68,7 @@ export default function ExciseTabsView() {
       {tab === "sales" && <ExciseSalesView />}
       {tab === "prices" && <ExciseBrandsManageView />}
       {tab === "return" && <ExciseFlr4View />}
+      {tab === "bulklitre" && <ExciseBulkLitreView />}
       {tab === "register" && <ExciseRegisterView />}
       {tab === "value" && <ExciseValueView />}
       {tab === "opening" && <ExciseOpeningStockView />}
@@ -76,11 +79,11 @@ export default function ExciseTabsView() {
       {tab === "report" && <ExciseSalesReportView />}
       {tab === "health" && <ExciseHealthCheckView />}
       {tab === "summary" && <ExciseSummaryView />}
-          {tab === "dayclose" && <DayCloseView />}
-          {tab === "counter" && <ExciseCounterView />}
-           {tab === "order" && <ExciseOrderView />}
-           {tab === "cloud" && <CloudBackupView />}
-          {tab === "posreport" && <PosReportView />}
+      {tab === "dayclose" && <DayCloseView />}
+      {tab === "counter" && <ExciseCounterView />}
+      {tab === "order" && <ExciseOrderView />}
+      {tab === "cloud" && <CloudBackupView />}
+      {tab === "posreport" && <PosReportView />}
     </div>
   );
 }
