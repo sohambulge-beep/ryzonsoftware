@@ -22,6 +22,7 @@ import CustomerLoginView from "@/components/CustomerLoginView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
 import AdminPanelView from "@/components/AdminPanelView";
+import AdminCustomerDataView from "@/components/AdminCustomerDataView";
 import { checkIsAdmin } from "@/lib/adminCheck";
 
 const TABS = [
@@ -49,9 +50,12 @@ const TABS = [
   { id: "posreport", label: "POS report" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"] | "admin";
+type TabId = (typeof TABS)[number]["id"] | "admin" | "custdata";
 
-const ADMIN_TAB = { id: "admin", label: "Admin" } as const;
+const ADMIN_TABS = [
+  { id: "admin", label: "Admin" },
+  { id: "custdata", label: "Customer data" },
+] as const;
 
 export default function ExciseTabsView() {
   const [tab, setTab] = useState<TabId>("brands");
@@ -71,7 +75,7 @@ export default function ExciseTabsView() {
     };
   }, []);
 
-  const visible: readonly { id: TabId; label: string }[] = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  const visible: readonly { id: TabId; label: string }[] = isAdmin ? [...TABS, ...ADMIN_TABS] : TABS;
 
   return (
     <div className="space-y-4">
@@ -112,6 +116,7 @@ export default function ExciseTabsView() {
       {tab === "cloud" && <CloudBackupView />}
       {tab === "posreport" && <PosReportView />}
       {tab === "admin" && isAdmin && <AdminPanelView />}
+      {tab === "custdata" && isAdmin && <AdminCustomerDataView />}
     </div>
   );
 }
