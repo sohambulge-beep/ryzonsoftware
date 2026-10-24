@@ -18,6 +18,7 @@ import ExciseSummaryView from "@/views/ExciseSummaryView";
 import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
 import ExciseOrderView from "@/views/ExciseOrderView";
+import CustomerLoginView from "@/components/CustomerLoginView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
 import AdminPanelView from "@/components/AdminPanelView";
@@ -43,6 +44,7 @@ const TABS = [
   { id: "dayclose", label: "Day close" },
   { id: "counter", label: "Liquor counter" },
   { id: "order", label: "Order on WhatsApp" },
+  { id: "account", label: "My account" },
   { id: "cloud", label: "Cloud backup" },
   { id: "posreport", label: "POS report" },
 ] as const;
@@ -106,6 +108,7 @@ export default function ExciseTabsView() {
       {tab === "dayclose" && <DayCloseView />}
       {tab === "counter" && <ExciseCounterView />}
       {tab === "order" && <ExciseOrderView />}
+      {tab === "account" && <CustomerLoginView />}
       {tab === "cloud" && <CloudBackupView />}
       {tab === "posreport" && <PosReportView />}
       {tab === "admin" && isAdmin && <AdminPanelView />}
