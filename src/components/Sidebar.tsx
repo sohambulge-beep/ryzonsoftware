@@ -47,11 +47,46 @@ const VIEW_FEATURE: Partial<Record<ViewId, FeatureId>> = {
   insights: 'insights',
 };
 
+// Label and icon of every page, used by the "Recent" shortcuts at the top.
+const ITEM_LOOKUP = new Map<ViewId, { label: string; icon: string; iconClass?: string }>();
+for (const g of NAV_ITEMS) {
+  for (const it of g.items) {
+    ITEM_LOOKUP.set(it.id, { label: it.label, icon: it.icon, iconClass: it.iconClass });
+  }
+}
+ITEM_LOOKUP.set('settings', { label: 'Settings & Plan', icon: 'fa-solid fa-gear' });
+
+const RECENT_KEY = 'pt_recent_views';
+const MAX_KEPT = 8;
+const SHOW_RECENT = 3;
+
+function readRecents(): ViewId[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const seen = new Set<string>();
+    const out: ViewId[] = [];
+    for (const x of parsed) {
+      if (typeof x === 'string' && !seen.has(x) && ITEM_LOOKUP.has(x as ViewId)) {
+        seen.add(x);
+        out.push(x as ViewId);
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { db, currentView, navigate } = useStore();
   const { hasFeature, plan } = usePlan();
   const { role, permissions, loading: roleLoading } = useRole();
   const [clock, setClock] = useState('');
+  const [recents, setRecents] = useState<ViewId[]>([]);
+  const [recentsReady, setRecentsReady] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -61,6 +96,26 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // The saved list is read only after the page has opened, so the server and the browser show the same thing.
+  useEffect(() => {
+    setRecents(readRecents());
+    setRecentsReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!recentsReady) return;
+    setRecents(prev => [currentView, ...prev.filter(x => x !== currentView)].slice(0, MAX_KEPT));
+  }, [currentView, recentsReady]);
+
+  useEffect(() => {
+    if (!recentsReady) return;
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+    } catch {
+      // storage can be blocked; the shortcuts just will not be remembered
+    }
+  }, [recents, recentsReady]);
 
   const totalExpenses = db.expenses.reduce((s, e) => s + e.amount, 0);
   const totalDue = db.customers.reduce((s, c) => s + c.currentBalance, 0);
@@ -74,6 +129,22 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     inventory: `${lowStock} Taps`,
     payments: `₹${Math.round(totalDue)}`,
   };
+
+  // Pages this person is allowed to see (same rules as the list below).
+  const allowedIds = new Set<ViewId>();
+  for (const group of NAV_ITEMS) {
+    const list = roleLoading ? group.items : filterItemsForRole(group.items, role, permissions);
+    for (const item of list) {
+      const feature = VIEW_FEATURE[item.id];
+      if (!feature || hasFeature(feature)) allowedIds.add(item.id);
+    }
+  }
+  allowedIds.add('settings');
+
+  const recentItems = recents
+    .filter(id => id !== currentView && id !== 'dashboard' && allowedIds.has(id) && ITEM_LOOKUP.has(id))
+    .slice(0, SHOW_RECENT)
+    .map(id => ({ id, ...ITEM_LOOKUP.get(id)! }));
 
   return (
     <>
@@ -104,6 +175,30 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
         {/* Navigation */}
         <div className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin space-y-5">
+          {recentItems.length > 0 && (
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider px-3 mb-2 font-semibold text-zinc-500">
+                Recent
+              </div>
+              <nav className="space-y-1">
+                {recentItems.map(item => (
+                  <button
+                    key={`recent-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      navigate(item.id);
+                      onClose();
+                    }}
+                    className="nav-link w-full flex items-center gap-x-3 px-3.5 py-2.5 rounded-lg text-sm cursor-pointer transition-colors duration-150 touch-manipulation text-left text-zinc-300 hover:bg-zinc-800 active:bg-zinc-800"
+                  >
+                    <i className={`${item.icon} w-5 text-center ${item.iconClass ?? 'text-zinc-400'}`} />
+                    <span className="flex-1">{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
+
           {NAV_ITEMS.map(group => (
             <div key={group.section}>
               <div
