@@ -18,6 +18,7 @@ import ExciseSummaryView from "@/views/ExciseSummaryView";
 import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
 import ExciseOrderView from "@/views/ExciseOrderView";
+import UdhaarReminderView from "@/components/UdhaarReminderView";
 import CustomerLoginView from "@/components/CustomerLoginView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
@@ -43,6 +44,7 @@ const TABS = [
   { id: "health", label: "Health check" },
   { id: "summary", label: "WhatsApp summary" },
   { id: "dayclose", label: "Day close" },
+  { id: "udhaar", label: "Udhaar reminder" },
   { id: "counter", label: "Liquor counter" },
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
@@ -242,6 +244,7 @@ export default function ExciseTabsView() {
       {tab === "health" && <ExciseHealthCheckView />}
       {tab === "summary" && <ExciseSummaryView />}
       {tab === "dayclose" && <DayCloseView />}
+      {tab === "udhaar" && <UdhaarReminderView />}
       {tab === "counter" && <ExciseCounterView />}
       {tab === "order" && <ExciseOrderView />}
       {tab === "account" && <CustomerLoginView />}
