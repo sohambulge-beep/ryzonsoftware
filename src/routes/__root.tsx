@@ -14,7 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "../integrations/supabase/client";
 import AutoBackup from "../components/AutoBackup";
 import PlanBanner from "../components/PlanBanner";
-import ClosingScreen from "../components/ClosingScreen";
+import ExitGuard from "../components/ExitGuard";
 
 function NotFoundComponent() {
   return (
@@ -154,7 +154,7 @@ function RootComponent() {
       <Outlet />
       <AutoBackup />
       <PlanBanner />
-      <ClosingScreen />
+      <ExitGuard />
     </QueryClientProvider>
   );
 }
