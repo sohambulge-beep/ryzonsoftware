@@ -2,29 +2,29 @@ import { Component, useCallback, useEffect, useRef, useState, type ReactNode } f
 import { supabase } from "../integrations/supabase/client";
 
 const OFF_KEY = "pt_exit_screen_off";
-const ASK_MS = 4500;
-const LETTERS = ["B", "Y", "E", "·", "B", "Y", "E"];
+const HINT_MS = 2500;
+const BYE_MS = 3000;
+const IMAGE = "/mascot.png";
 
 const css = `
-@keyframes ptx-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes ptx-wave { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(32deg); } }
-@keyframes ptx-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
-@keyframes ptx-letter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes ptx-orb { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(14px, -18px) scale(1.12); } }
-@keyframes ptx-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+@keyframes ptx-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes ptx-orb { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(16px, -20px) scale(1.12); } }
+@keyframes ptx-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes ptx-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ptx-ring { 0% { transform: scale(.85); opacity: .7; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes ptx-toast { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .ptx-float { animation: ptx-float 3.2s ease-in-out infinite; }
-.ptx-arm { transform-origin: 151px 133px; animation: ptx-wave 1.1s ease-in-out infinite; }
+.ptx-orb { position: absolute; border-radius: 9999px; filter: blur(44px); animation: ptx-orb 7s ease-in-out infinite; }
 .ptx-in { animation: ptx-in .5s ease-out both; }
-.ptx-letter { display: inline-block; margin: 0 5px; opacity: 0; animation: ptx-letter .5s ease-out forwards; }
-.ptx-orb { position: absolute; border-radius: 9999px; filter: blur(40px); animation: ptx-orb 7s ease-in-out infinite; }
-.ptx-eye { transform-box: fill-box; transform-origin: center; animation: ptx-blink 4s infinite; }
+.ptx-ring { position: absolute; inset: 0; border-radius: 9999px; border: 2px solid rgba(103,232,249,.55); animation: ptx-ring 2.4s ease-out infinite; }
+.ptx-bar { transform-origin: left; animation: ptx-bar 3s linear forwards; }
 @media (prefers-reduced-motion: reduce) {
-  .ptx-float, .ptx-arm, .ptx-orb, .ptx-eye { animation: none; }
-  .ptx-letter, .ptx-in { animation: none; opacity: 1; }
+  .ptx-float, .ptx-orb, .ptx-ring { animation: none; }
+  .ptx-in { animation: none; }
 }
 `;
 
-type Phase = "idle" | "ask" | "bye";
+type Phase = "idle" | "hint" | "bye";
 
 // Copy of the browser history data without our own marks, so the app's router data is kept.
 function plain(s: any): Record<string, any> {
@@ -63,6 +63,7 @@ class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
 function Inner() {
   const [signedIn, setSignedIn] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  const [imgFailed, setImgFailed] = useState(false);
   const phaseRef = useRef<Phase>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -95,6 +96,48 @@ function Inner() {
     };
   }, []);
 
+  // Loads the mascot in advance so it shows at once.
+  useEffect(() => {
+    if (!signedIn) return;
+    try {
+      const img = new Image();
+      img.src = IMAGE;
+    } catch {
+      // ignore
+    }
+  }, [signedIn]);
+
+  // Tries to close the app. If the browser does not allow it, the person is brought back to the app.
+  const leave = useCallback(() => {
+    try {
+      window.close();
+    } catch {
+      // ignore
+    }
+    setTimeout(() => {
+      try {
+        history.back();
+      } catch {
+        // ignore
+      }
+      setTimeout(() => {
+        // Still here: the browser did not allow closing, so return to the app.
+        setBoth("idle");
+        try {
+          armGuard();
+        } catch {
+          // ignore
+        }
+      }, 1500);
+    }, 300);
+  }, [setBoth]);
+
+  const startBye = useCallback(() => {
+    clearTimer();
+    setBoth("bye");
+    timerRef.current = setTimeout(leave, BYE_MS);
+  }, [clearTimer, setBoth, leave]);
+
   useEffect(() => {
     if (!signedIn || isOff()) return;
     try {
@@ -107,58 +150,71 @@ function Inner() {
       if (isOff()) return;
       const s: any = e.state;
       if (!s || !s.ptBase) return; // not the app's own first page, nothing to do
+      if (phaseRef.current === "bye") return; // already leaving
 
-      if (phaseRef.current === "ask") {
-        // second press: leave
-        clearTimer();
-        setBoth("bye");
-        try {
-          history.back();
-        } catch {
-          // ignore
-        }
+      if (phaseRef.current === "hint") {
+        startBye(); // second press within the time: say goodbye
         return;
       }
 
-      // first press: show the farewell and put the guard page back
+      // first press: show the small hint and put the guard page back
       try {
         history.pushState({ ...plain(s), ptGuard: true }, "");
       } catch {
         // ignore
       }
-      setBoth("ask");
+      setBoth("hint");
       clearTimer();
-      timerRef.current = setTimeout(() => setBoth("idle"), ASK_MS);
+      timerRef.current = setTimeout(() => setBoth("idle"), HINT_MS);
+    };
+
+    // If the person switches to another app while the goodbye is showing, cancel it.
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && phaseRef.current === "bye") {
+        clearTimer();
+        setBoth("idle");
+        try {
+          armGuard();
+        } catch {
+          // ignore
+        }
+      }
     };
 
     window.addEventListener("popstate", onPop);
+    document.addEventListener("visibilitychange", onHide);
     return () => {
       window.removeEventListener("popstate", onPop);
+      document.removeEventListener("visibilitychange", onHide);
       clearTimer();
     };
-  }, [signedIn, setBoth, clearTimer]);
-
-  function stay() {
-    clearTimer();
-    setBoth("idle");
-    try {
-      armGuard();
-    } catch {
-      // ignore
-    }
-  }
-
-  function noMore() {
-    clearTimer();
-    try {
-      localStorage.setItem(OFF_KEY, "1");
-    } catch {
-      // ignore
-    }
-    setBoth("idle");
-  }
+  }, [signedIn, setBoth, clearTimer, startBye]);
 
   if (phase === "idle") return null;
+
+  if (phase === "hint") {
+    return (
+      <>
+        <style>{css}</style>
+        <div
+          role="status"
+          className="fixed rounded-full px-4 py-2 text-xs"
+          style={{
+            zIndex: 90,
+            left: "50%",
+            bottom: 24,
+            transform: "translateX(-50%)",
+            background: "rgba(15,23,42,.94)",
+            color: "#f1f5f9",
+            border: "1px solid rgba(103,232,249,.4)",
+            animation: "ptx-toast .25s ease-out both",
+          }}
+        >
+          Press Back again to exit
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -166,118 +222,90 @@ function Inner() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Closing the app"
-        className="fixed inset-0 flex items-center justify-center overflow-y-auto px-5 py-8"
+        aria-label="Goodbye"
+        className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden px-5"
         style={{
           zIndex: 100,
           color: "#e2e8f0",
-          background: "radial-gradient(circle at 50% 28%, #1e1b4b 0%, #0b1020 55%, #050814 100%)",
+          background: "radial-gradient(circle at 50% 30%, #1e1b4b 0%, #0b1020 55%, #050814 100%)",
         }}
       >
-        <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
           <div
             style={{
               position: "absolute",
               inset: 0,
               backgroundImage:
-                "linear-gradient(rgba(103,232,249,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(103,232,249,.06) 1px, transparent 1px)",
-              backgroundSize: "36px 36px",
+                "linear-gradient(rgba(103,232,249,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(103,232,249,.07) 1px, transparent 1px)",
+              backgroundSize: "38px 38px",
             }}
           />
-          <span className="ptx-orb" style={{ width: 220, height: 220, left: "-60px", top: "8%", background: "rgba(124,58,237,.35)" }} />
+          <span className="ptx-orb" style={{ width: 240, height: 240, left: "-70px", top: "6%", background: "rgba(124,58,237,.38)" }} />
           <span
             className="ptx-orb"
-            style={{ width: 200, height: 200, right: "-50px", bottom: "10%", background: "rgba(6,182,212,.30)", animationDelay: "2s" }}
+            style={{ width: 220, height: 220, right: "-60px", bottom: "8%", background: "rgba(6,182,212,.32)", animationDelay: "2s" }}
           />
         </div>
 
-        <div
-          className="ptx-in relative w-full max-w-sm rounded-3xl p-6 text-center"
-          style={{
-            background: "rgba(15,23,42,.62)",
-            border: "1px solid rgba(103,232,249,.35)",
-            boxShadow: "0 0 40px rgba(103,232,249,.18), inset 0 0 30px rgba(167,139,250,.08)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <div className="flex justify-center">
-            <svg width="190" height="215" viewBox="0 0 200 230" className="ptx-float" aria-hidden="true">
-              <ellipse cx="100" cy="222" rx="52" ry="6" fill="rgba(103,232,249,.25)" />
-              <circle cx="62" cy="42" r="17" fill="#111827" />
-              <circle cx="138" cy="42" r="17" fill="#111827" />
-              <ellipse cx="100" cy="155" rx="60" ry="58" fill="#ffffff" />
-              <ellipse cx="66" cy="204" rx="24" ry="15" fill="#111827" />
-              <ellipse cx="134" cy="204" rx="24" ry="15" fill="#111827" />
-              <ellipse cx="44" cy="150" rx="15" ry="32" fill="#111827" transform="rotate(14 44 150)" />
-              <ellipse cx="100" cy="158" rx="36" ry="36" fill="#f1f5f9" />
-              <circle cx="100" cy="80" r="50" fill="#ffffff" />
-              <ellipse cx="76" cy="76" rx="13" ry="17" fill="#111827" transform="rotate(22 76 76)" />
-              <ellipse cx="124" cy="76" rx="13" ry="17" fill="#111827" transform="rotate(-22 124 76)" />
-              <g className="ptx-eye">
-                <circle cx="79" cy="75" r="6" fill="#ffffff" />
-                <circle cx="80" cy="76" r="3.2" fill="#111827" />
-                <circle cx="81" cy="74.5" r="1.1" fill="#ffffff" />
-              </g>
-              <g className="ptx-eye">
-                <circle cx="121" cy="75" r="6" fill="#ffffff" />
-                <circle cx="120" cy="76" r="3.2" fill="#111827" />
-                <circle cx="121" cy="74.5" r="1.1" fill="#ffffff" />
-              </g>
-              <ellipse cx="100" cy="94" rx="8" ry="5.5" fill="#111827" />
-              <path d="M90 102 Q100 112 110 102" stroke="#111827" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-              <circle cx="64" cy="98" r="7" fill="#fda4af" opacity=".6" />
-              <circle cx="136" cy="98" r="7" fill="#fda4af" opacity=".6" />
-              <g className="ptx-arm">
-                <ellipse cx="164" cy="104" rx="15" ry="32" fill="#111827" transform="rotate(24 164 104)" />
-              </g>
-            </svg>
+        <div className="ptx-in relative flex flex-col items-center">
+          <div className="relative flex items-center justify-center" style={{ width: 300, height: 300 }}>
+            <span aria-hidden="true" className="ptx-ring" />
+            <span aria-hidden="true" className="ptx-ring" style={{ animationDelay: "1.2s" }} />
+            {imgFailed ? (
+              <span className="ptx-float" style={{ fontSize: 120, lineHeight: 1 }} aria-hidden="true">
+                🐧
+              </span>
+            ) : (
+              <img
+                src={IMAGE}
+                alt="Mascot"
+                className="ptx-float"
+                onError={() => setImgFailed(true)}
+                style={{
+                  maxWidth: 280,
+                  maxHeight: 280,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 0 22px rgba(103,232,249,.55))",
+                }}
+              />
+            )}
           </div>
 
           <h2
-            className="mt-2 text-3xl font-bold"
+            className="mt-4 text-3xl font-bold"
             style={{
               background: "linear-gradient(90deg, #67e8f9, #a78bfa, #f0abfc)",
               WebkitBackgroundClip: "text",
               backgroundClip: "text",
               color: "transparent",
+              letterSpacing: ".02em",
             }}
           >
-            Bye bye!
+            Thanks for visiting
           </h2>
+        </div>
 
-          <p
-            className="mt-2 text-xl font-bold"
-            style={{ color: "#67e8f9", textShadow: "0 0 12px rgba(103,232,249,.7)", letterSpacing: ".15em" }}
-            aria-label="B Y E, B Y E"
-          >
-            {LETTERS.map((ch, i) => (
-              <span key={i} className="ptx-letter" style={{ animationDelay: `${0.35 + i * 0.13}s` }}>
-                {ch}
-              </span>
-            ))}
-          </p>
-
-          <p className="mt-3 text-sm" style={{ color: "#cbd5e1" }}>
-            See you soon!
-          </p>
-          <p className="mt-1 text-xs" style={{ color: "#94a3b8" }}>
-            {phase === "ask"
-              ? "Tap the Back button once more to close the app."
-              : "You can close the app now. Have a great day!"}
-          </p>
-
-          <button
-            type="button"
-            autoFocus
-            onClick={stay}
-            className="mt-6 w-full rounded-xl px-6 py-3 text-sm font-semibold"
-            style={{ background: "linear-gradient(90deg, #22d3ee, #8b5cf6)", color: "#0b1020" }}
-          >
-            Stay in app
-          </button>
-          <button type="button" onClick={noMore} className="mt-3 text-xs underline" style={{ color: "#94a3b8" }}>
-            Do not show this again
-          </button>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: 28,
+            right: 28,
+            bottom: 36,
+            height: 4,
+            borderRadius: 9999,
+            background: "rgba(148,163,184,.25)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            className="ptx-bar"
+            style={{
+              height: "100%",
+              background: "linear-gradient(90deg, #22d3ee, #8b5cf6)",
+              boxShadow: "0 0 10px rgba(34,211,238,.8)",
+            }}
+          />
         </div>
       </div>
     </>
