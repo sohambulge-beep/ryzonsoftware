@@ -1,6 +1,7 @@
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { loadState } from "../data";
+import PremiumTheme from "./PremiumTheme";
 
 const LS_URL = "pt_cloud_url";
 const LS_KEY = "pt_cloud_key";
@@ -227,44 +228,53 @@ function Inner() {
     };
   }, [run]);
 
-  if (online === null || hidden) return null;
+  const renderPill = (): ReactNode => {
+    if (online === null || hidden) return null;
 
-  let text = "";
-  let color = "#22c55e";
-  if (online === false) {
-    color = "#f59e0b";
-    text = pending
-      ? "Offline: 1 backup waiting. POS data stays on this phone."
-      : "Offline: POS data stays on this phone.";
-  } else if (!configured) {
-    return null;
-  } else if (status === "syncing") {
-    color = "#3b82f6";
-    text = "Syncing...";
-  } else if (status === "failed") {
-    color = "#ef4444";
-    text = `Sync failed: ${message}. Will retry.`;
-  } else if (pending) {
-    color = "#f59e0b";
-    text = "1 backup waiting to sync.";
-  } else {
-    text = lastAt ? `Synced ${stamp(lastAt)}` : "Cloud backup is on.";
-    if (message) text += ` (${message})`;
-  }
+    let text = "";
+    let color = "#22c55e";
+    if (online === false) {
+      color = "#f59e0b";
+      text = pending
+        ? "Offline: 1 backup waiting. POS data stays on this phone."
+        : "Offline: POS data stays on this phone.";
+    } else if (!configured) {
+      return null;
+    } else if (status === "syncing") {
+      color = "#3b82f6";
+      text = "Syncing...";
+    } else if (status === "failed") {
+      color = "#ef4444";
+      text = `Sync failed: ${message}. Will retry.`;
+    } else if (pending) {
+      color = "#f59e0b";
+      text = "1 backup waiting to sync.";
+    } else {
+      text = lastAt ? `Synced ${stamp(lastAt)}` : "Cloud backup is on.";
+      if (message) text += ` (${message})`;
+    }
+
+    return (
+      <div className="fixed bottom-24 left-2 z-50 flex max-w-xs flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs">
+        <span style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: color, display: "inline-block" }} />
+        <span>{text}</span>
+        {online !== false && status !== "syncing" && (
+          <button className="underline" onClick={() => run(true)}>
+            Sync now
+          </button>
+        )}
+        <button className="underline" onClick={() => setHidden(true)}>
+          Hide
+        </button>
+      </div>
+    );
+  };
 
   return (
-    <div className="fixed bottom-24 left-2 z-50 flex max-w-xs flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs">
-      <span style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: color, display: "inline-block" }} />
-      <span>{text}</span>
-      {online !== false && status !== "syncing" && (
-        <button className="underline" onClick={() => run(true)}>
-          Sync now
-        </button>
-      )}
-      <button className="underline" onClick={() => setHidden(true)}>
-        Hide
-      </button>
-    </div>
+    <>
+      <PremiumTheme />
+      {renderPill()}
+    </>
   );
 }
 
