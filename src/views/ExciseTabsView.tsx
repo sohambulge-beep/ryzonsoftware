@@ -18,6 +18,8 @@ import ExciseSummaryView from "@/views/ExciseSummaryView";
 import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
 import ExciseOrderView from "@/views/ExciseOrderView";
+import ItemProfitView from "@/components/ItemProfitView";
+import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
 import CashClosingView from "@/components/CashClosingView";
 import UdhaarReminderView from "@/components/UdhaarReminderView";
@@ -43,6 +45,8 @@ const TABS = [
   { id: "stockcheck", label: "Stock check" },
   { id: "forecast", label: "Stock forecast" },
   { id: "report", label: "Sales report" },
+  { id: "itemprofit", label: "Item profit" },
+  { id: "rush", label: "Rush hours" },
   { id: "health", label: "Health check" },
   { id: "summary", label: "WhatsApp summary" },
   { id: "dayclose", label: "Day close" },
@@ -245,6 +249,8 @@ export default function ExciseTabsView() {
       {tab === "stockcheck" && <ExciseStockCheckView />}
       {tab === "forecast" && <ExciseForecastView />}
       {tab === "report" && <ExciseSalesReportView />}
+      {tab === "itemprofit" && <ItemProfitView />}
+      {tab === "rush" && <RushHoursView />}
       {tab === "health" && <ExciseHealthCheckView />}
       {tab === "summary" && <ExciseSummaryView />}
       {tab === "dayclose" && <DayCloseView />}
