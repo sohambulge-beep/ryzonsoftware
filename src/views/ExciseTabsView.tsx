@@ -31,6 +31,7 @@ import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
 import AdminPanelView from "@/components/AdminPanelView";
 import AdminCustomerDataView from "@/components/AdminCustomerDataView";
+import AdminBillsView from "@/components/AdminBillsView";
 import { checkIsAdmin } from "@/lib/adminCheck";
 
 const TABS = [
@@ -69,6 +70,7 @@ const TABS = [
 const ADMIN_TABS = [
   { id: "admin", label: "Admin" },
   { id: "custdata", label: "Customer data" },
+  { id: "cloudbills", label: "Cloud bills" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"] | (typeof ADMIN_TABS)[number]["id"];
@@ -80,7 +82,7 @@ const RECENT_KEY = "pt_excise_recent_tabs";
 const HIDDEN_KEY = "pt_excise_hidden_tabs";
 const MAX_RECENT = 30;
 
-const isAdminTab = (id: TabId) => id === "admin" || id === "custdata";
+const isAdminTab = (id: TabId) => id === "admin" || id === "custdata" || id === "cloudbills";
 const labelOf = (id: TabId) => ALL_TABS.find((t) => t.id === id)?.label ?? id;
 
 // Reads a saved list of tab ids and drops anything unknown or repeated.
@@ -273,6 +275,7 @@ export default function ExciseTabsView() {
       {tab === "posreport" && <PosReportView />}
       {tab === "admin" && isAdmin && <AdminPanelView />}
       {tab === "custdata" && isAdmin && <AdminCustomerDataView />}
+      {tab === "cloudbills" && isAdmin && <AdminBillsView />}
     </div>
   );
 }
