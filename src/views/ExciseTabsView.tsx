@@ -18,6 +18,7 @@ import ExciseSummaryView from "@/views/ExciseSummaryView";
 import DayCloseView from "@/views/DayCloseView";
 import ExciseCounterView from "@/views/ExciseCounterView";
 import ExciseOrderView from "@/views/ExciseOrderView";
+import WastageLogView from "@/components/WastageLogView";
 import BookingsView from "@/components/BookingsView";
 import BillAlertsView from "@/components/BillAlertsView";
 import ItemProfitView from "@/components/ItemProfitView";
@@ -46,6 +47,7 @@ const TABS = [
   { id: "bulk", label: "Bulk sales" },
   { id: "stockcheck", label: "Stock check" },
   { id: "forecast", label: "Stock forecast" },
+  { id: "wastage", label: "Wastage log" },
   { id: "report", label: "Sales report" },
   { id: "alerts", label: "Bill alerts" },
   { id: "itemprofit", label: "Item profit" },
@@ -252,6 +254,7 @@ export default function ExciseTabsView() {
       {tab === "bulk" && <ExciseBulkSalesView />}
       {tab === "stockcheck" && <ExciseStockCheckView />}
       {tab === "forecast" && <ExciseForecastView />}
+      {tab === "wastage" && <WastageLogView />}
       {tab === "report" && <ExciseSalesReportView />}
       {tab === "alerts" && <BillAlertsView />}
       {tab === "itemprofit" && <ItemProfitView />}
