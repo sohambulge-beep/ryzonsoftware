@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { loadState } from "../data";
 import PremiumTheme from "./PremiumTheme";
 import BillSync from "./BillSync";
+import StockSync from "./StockSync";
 
 const LS_URL = "pt_cloud_url";
 const LS_KEY = "pt_cloud_key";
@@ -275,6 +276,7 @@ function Inner() {
     <>
       <PremiumTheme />
       <BillSync />
+      <StockSync />
       {renderPill()}
     </>
   );
