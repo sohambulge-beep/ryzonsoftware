@@ -1,5 +1,6 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { getCloudClient } from "../lib/adminCheck";
+import FreshStart from "./FreshStart";
 
 const CHECK_FIRST_MS = 5000;
 const CHECK_EVERY_MS = 30 * 60 * 1000;
@@ -115,8 +116,11 @@ function Inner() {
 
 export default function PlanBanner() {
   return (
-    <Guard>
-      <Inner />
-    </Guard>
+    <>
+      <FreshStart />
+      <Guard>
+        <Inner />
+      </Guard>
+    </>
   );
 }
