@@ -27,6 +27,7 @@ import CustomerClubView from "@/components/CustomerClubView";
 import CashClosingView from "@/components/CashClosingView";
 import UdhaarReminderView from "@/components/UdhaarReminderView";
 import CustomerLoginView from "@/components/CustomerLoginView";
+import StartFreshView from "@/components/StartFreshView";
 import SyncReviewView from "@/components/SyncReviewView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
@@ -65,6 +66,7 @@ const TABS = [
   { id: "counter", label: "Liquor counter" },
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
+  { id: "startfresh", label: "Start fresh" },
   { id: "syncreview", label: "Sync review" },
   { id: "cloud", label: "Cloud backup" },
   { id: "posreport", label: "POS report" },
@@ -276,6 +278,7 @@ export default function ExciseTabsView() {
       {tab === "counter" && <ExciseCounterView />}
       {tab === "order" && <ExciseOrderView />}
       {tab === "account" && <CustomerLoginView />}
+      {tab === "startfresh" && <StartFreshView />}
       {tab === "syncreview" && <SyncReviewView />}
       {tab === "cloud" && <CloudBackupView />}
       {tab === "posreport" && <PosReportView />}
