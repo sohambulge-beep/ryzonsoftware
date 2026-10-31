@@ -2,7 +2,8 @@ import * as dataModule from "../data";
 
 // Looked up by name at run time, so a missing export can never break the build.
 const FN_NAMES = { load: "loadState", save: "saveState" };
-const CHECKED_KEY = "pt_fresh_checked";
+const CHECKED_KEY = "pt_fresh_checked_v2";
+const TRIES_KEY = "pt_fresh_tries";
 const SAFETY_KEY = "pt_wipe_safety";
 // Lists of business records. Anything else (settings, plan and so on) is left alone.
 const LISTS = ["taps", "customers", "invoices", "payments", "expenses", "purchases", "suppliers", "kegs"];
@@ -15,7 +16,8 @@ const NOTE_KEYS = [
   "pt_alerts_reviewed",
 ];
 const SYNC_PREFIXES = ["pt_bill_sync_map:", "pt_stock_sync_map:", "pt_sync_review:"];
-const DEMO_NAMES = ["elena rostova", "liam o'connor", "michael vance"];
+// The three customers that come with the sample data (letters only, so spelling marks do not matter).
+const DEMO_NAMES = ["michaelvance", "elenarostova", "liamoconnor"];
 
 export interface Counts {
   bills: number;
@@ -45,17 +47,13 @@ export function countData(): Counts {
   };
 }
 
-// True only when the data is exactly the sample data the app comes with.
-function isPristineDemo(db: any): boolean {
+const norm = (s: any) => String(s ?? "").toLowerCase().replace(/[^a-z]/g, "");
+
+// True when the sample customers that come with the app are present.
+function hasDemoData(db: any): boolean {
   const customers: any[] = Array.isArray(db?.customers) ? db.customers : [];
-  const names = customers
-    .map((c) => String(c?.name ?? "").replace(/\u2019/g, "'").trim().toLowerCase())
-    .sort();
-  if (names.length !== DEMO_NAMES.length) return false;
-  if (!names.every((n, i) => n === DEMO_NAMES[i])) return false;
-  const bills = Array.isArray(db?.invoices) ? db.invoices.length : -1;
-  const exp = Array.isArray(db?.expenses) ? db.expenses.length : -1;
-  return bills === 3 && exp === 3;
+  const have = new Set(customers.map((c) => norm(c?.name)));
+  return DEMO_NAMES.every((n) => have.has(n));
 }
 
 function emptied(db: any): any {
@@ -169,16 +167,42 @@ export function restoreSafety(): void {
   }, 600);
 }
 
-// For a brand new phone: if the data is still the untouched sample, empty it once.
+// Runs when the app opens. If the sample (demo) data is still there, it is cleared, so a real
+// customer never sees it. It tries at most twice and then stops, so it can never loop.
 export function autoFreshCheck(): boolean {
   try {
     if (localStorage.getItem(CHECKED_KEY)) return false;
-    localStorage.setItem(CHECKED_KEY, "1"); // set first, so this check can never repeat or loop
   } catch {
     return false;
   }
   const f = fns();
-  if (!isPristineDemo(f.load())) return false;
+  if (!hasDemoData(f.load())) {
+    try {
+      localStorage.setItem(CHECKED_KEY, "1");
+    } catch {
+      // ignore
+    }
+    return false;
+  }
+  let tries = 0;
+  try {
+    tries = Number(localStorage.getItem(TRIES_KEY) || 0) || 0;
+  } catch {
+    // ignore
+  }
+  if (tries >= 2) {
+    try {
+      localStorage.setItem(CHECKED_KEY, "1");
+    } catch {
+      // ignore
+    }
+    return false;
+  }
+  try {
+    localStorage.setItem(TRIES_KEY, String(tries + 1));
+  } catch {
+    return false;
+  }
   wipeNow(false);
   return true;
 }
