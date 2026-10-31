@@ -27,11 +27,13 @@ import CustomerClubView from "@/components/CustomerClubView";
 import CashClosingView from "@/components/CashClosingView";
 import UdhaarReminderView from "@/components/UdhaarReminderView";
 import CustomerLoginView from "@/components/CustomerLoginView";
+import SyncReviewView from "@/components/SyncReviewView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
 import AdminPanelView from "@/components/AdminPanelView";
 import AdminCustomerDataView from "@/components/AdminCustomerDataView";
 import AdminBillsView from "@/components/AdminBillsView";
+import AdminStockView from "@/components/AdminStockView";
 import { checkIsAdmin } from "@/lib/adminCheck";
 
 const TABS = [
@@ -63,6 +65,7 @@ const TABS = [
   { id: "counter", label: "Liquor counter" },
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
+  { id: "syncreview", label: "Sync review" },
   { id: "cloud", label: "Cloud backup" },
   { id: "posreport", label: "POS report" },
 ] as const;
@@ -71,6 +74,7 @@ const ADMIN_TABS = [
   { id: "admin", label: "Admin" },
   { id: "custdata", label: "Customer data" },
   { id: "cloudbills", label: "Cloud bills" },
+  { id: "cloudstock", label: "Cloud stock" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"] | (typeof ADMIN_TABS)[number]["id"];
@@ -82,7 +86,8 @@ const RECENT_KEY = "pt_excise_recent_tabs";
 const HIDDEN_KEY = "pt_excise_hidden_tabs";
 const MAX_RECENT = 30;
 
-const isAdminTab = (id: TabId) => id === "admin" || id === "custdata" || id === "cloudbills";
+const isAdminTab = (id: TabId) =>
+  id === "admin" || id === "custdata" || id === "cloudbills" || id === "cloudstock";
 const labelOf = (id: TabId) => ALL_TABS.find((t) => t.id === id)?.label ?? id;
 
 // Reads a saved list of tab ids and drops anything unknown or repeated.
@@ -271,11 +276,13 @@ export default function ExciseTabsView() {
       {tab === "counter" && <ExciseCounterView />}
       {tab === "order" && <ExciseOrderView />}
       {tab === "account" && <CustomerLoginView />}
+      {tab === "syncreview" && <SyncReviewView />}
       {tab === "cloud" && <CloudBackupView />}
       {tab === "posreport" && <PosReportView />}
       {tab === "admin" && isAdmin && <AdminPanelView />}
       {tab === "custdata" && isAdmin && <AdminCustomerDataView />}
       {tab === "cloudbills" && isAdmin && <AdminBillsView />}
+      {tab === "cloudstock" && isAdmin && <AdminStockView />}
     </div>
   );
 }
