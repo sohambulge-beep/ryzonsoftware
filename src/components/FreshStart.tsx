@@ -19,7 +19,7 @@ function Inner() {
       } catch {
         // never block the app
       }
-    }, 2000);
+    }, 400);
     return () => clearTimeout(t);
   }, []);
   return null;
