@@ -28,6 +28,119 @@ export interface CustomerInput {
   stateCode?: string;
 }
 
+// ---------- Two-phone merge support ----------
+export type PosEventKind = 'invoice' | 'payment' | 'purchase' | 'expense' | 'customer' | 'tap' | 'supplier';
+export interface PosEvent {
+  kind: PosEventKind;
+  payload: any;
+}
+
+// The merge screen lives outside this provider, so it hands the other phone's records over through this bridge.
+export const storeBridge: { merge: ((events: PosEvent[]) => void) | null } = { merge: null };
+
+// Adds one record made on another phone, with exactly the same effect it had there.
+// Applying the same record twice changes nothing.
+function applyPosEvent(db: AppData, ev: PosEvent): AppData {
+  const p: any = ev.payload;
+  if (!p || typeof p !== 'object' || typeof p.id !== 'string' || !p.id) return db;
+
+  switch (ev.kind) {
+    case 'supplier':
+      return db.suppliers.some(s => s.id === p.id) ? db : { ...db, suppliers: [...db.suppliers, p as Supplier] };
+
+    case 'tap':
+      return db.taps.some(t => t.id === p.id) ? db : { ...db, taps: [...db.taps, p as Tap] };
+
+    case 'customer':
+      return db.customers.some(c => c.id === p.id) ? db : { ...db, customers: [...db.customers, p as Customer] };
+
+    case 'expense':
+      return db.expenses.some(e => e.id === p.id) ? db : { ...db, expenses: [...db.expenses, p as Expense] };
+
+    case 'purchase': {
+      const po = p as Purchase;
+      if (
+        db.purchases.some(
+          x => x.id === po.id && x.beerId === po.beerId && x.date === po.date && x.litersAdded === po.litersAdded
+        )
+      ) {
+        return db;
+      }
+      return {
+        ...db,
+        purchases: [...db.purchases, po],
+        taps: db.taps.map(t =>
+          t.id === po.beerId
+            ? { ...t, currentLiters: t.currentLiters + po.litersAdded, costPerLiter: po.costPerLiter, supplierId: po.supplierId }
+            : t
+        ),
+      };
+    }
+
+    case 'invoice': {
+      const inv = p as Invoice;
+      if (!Array.isArray(inv.items) || db.invoices.some(i => i.id === inv.id)) return db;
+      const onTab = inv.paymentMethod === 'Tab';
+      // Start from the bill's original state; payments made later arrive as their own records.
+      const fresh: Invoice = {
+        ...inv,
+        paidAmount: onTab ? 0 : inv.total,
+        balanceDue: onTab ? inv.total : 0,
+        status: onTab ? ('Unpaid' as const) : ('Paid' as const),
+      };
+      return {
+        ...db,
+        invoices: [...db.invoices, fresh],
+        taps: db.taps.map(t => {
+          const used = inv.items.filter(i => i.beerId === t.id).reduce((s, i) => s + (i.litersTotal || 0), 0);
+          return used > 0 ? { ...t, currentLiters: Math.max(0, t.currentLiters - used) } : t;
+        }),
+        customers: db.customers.map(c =>
+          c.id === inv.customerId
+            ? {
+                ...c,
+                totalSpent: (c.totalSpent || 0) + inv.total,
+                currentBalance: onTab ? (c.currentBalance || 0) + inv.total : c.currentBalance,
+              }
+            : c
+        ),
+      };
+    }
+
+    case 'payment': {
+      const pay = p as Payment;
+      if (db.payments.some(x => x.id === pay.id)) return db;
+      const cust = db.customers.find(c => c.id === pay.customerId);
+      if (!cust) return { ...db, payments: [...db.payments, pay] };
+
+      let remaining = pay.amount;
+      const invoices = db.invoices.map(inv => {
+        if (inv.customerId === cust.id && inv.balanceDue > 0 && remaining > 0) {
+          if (remaining >= inv.balanceDue) {
+            remaining -= inv.balanceDue;
+            return { ...inv, paidAmount: inv.paidAmount + inv.balanceDue, balanceDue: 0, status: 'Paid' as const };
+          }
+          const paidNow = remaining;
+          remaining = 0;
+          return { ...inv, paidAmount: inv.paidAmount + paidNow, balanceDue: inv.balanceDue - paidNow, status: 'Partial' as const };
+        }
+        return inv;
+      });
+      return {
+        ...db,
+        payments: [...db.payments, pay],
+        invoices,
+        customers: db.customers.map(c =>
+          c.id === cust.id ? { ...c, currentBalance: Math.max(0, (c.currentBalance || 0) - pay.amount) } : c
+        ),
+      };
+    }
+
+    default:
+      return db;
+  }
+}
+
 /**
  * Builds the GST breakdown for a sale when GST billing is switched on.
  * Returns null when GST is off, so the existing simple tax flow is untouched.
@@ -559,7 +672,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             remainingPaid -= inv.balanceDue;
             return { ...inv, paidAmount: inv.paidAmount + inv.balanceDue, balanceDue: 0, status: 'Paid' as const };
           } else {
-            return { ...inv, paidAmount: inv.paidAmount + remainingPaid, balanceDue: inv.balanceDue - remainingPaid, status: 'Partial' as const };
+            const paidNow = remainingPaid;
+            remainingPaid = 0;
+            return { ...inv, paidAmount: inv.paidAmount + paidNow, balanceDue: inv.balanceDue - paidNow, status: 'Partial' as const };
           }
         }
         return inv;
@@ -589,6 +704,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => {
     setDb(clearAllData());
   }, []);
+
+  // Adds the other phone's records (all at once, in one update).
+  const mergeEvents = useCallback((events: PosEvent[]) => {
+    setDb(prev => events.reduce((cur, ev) => applyPosEvent(cur, ev), prev));
+  }, []);
+
+  useEffect(() => {
+    storeBridge.merge = mergeEvents;
+    return () => {
+      storeBridge.merge = null;
+    };
+  }, [mergeEvents]);
 
   const value: StoreContextValue = {
     db, cart, currentView, modal, navigate, openModal, closeModal,
