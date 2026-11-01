@@ -9,7 +9,24 @@ function hoursAgo(n: number): string {
   return new Date(Date.now() - 3600000 * n).toISOString();
 }
 
+// A new customer starts from zero: no taps, no customers, no bills.
 export const INITIAL_DATA: AppData = {
+  settings: {
+    barName: 'My Bar',
+    taxRate: 0.085,
+    currency: '₹',
+  },
+  taps: [],
+  suppliers: [],
+  customers: [],
+  purchases: [],
+  invoices: [],
+  payments: [],
+  expenses: [],
+};
+
+// Demo data. It is used only when someone presses "Load sample data" on purpose.
+export const SAMPLE_DATA: AppData = {
   settings: {
     barName: 'The Rusty Hop Taphouse',
     taxRate: 0.085,
@@ -105,14 +122,14 @@ export function saveState(data: AppData): void {
 }
 
 export function resetToSample(): AppData {
-  return structuredClone(INITIAL_DATA);
+  return structuredClone(SAMPLE_DATA);
 }
 
 export function clearAllData(): AppData {
   return {
     settings: INITIAL_DATA.settings,
-    taps: INITIAL_DATA.taps,
-    suppliers: INITIAL_DATA.suppliers,
+    taps: [],
+    suppliers: [],
     customers: [],
     purchases: [],
     invoices: [],
