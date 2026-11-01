@@ -28,6 +28,7 @@ import CashClosingView from "@/components/CashClosingView";
 import UdhaarReminderView from "@/components/UdhaarReminderView";
 import CustomerLoginView from "@/components/CustomerLoginView";
 import OfflineQueueView from "@/components/OfflineQueueView";
+import EventMergeView from "@/components/EventMergeView";
 import SyncReviewView from "@/components/SyncReviewView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
@@ -67,6 +68,7 @@ const TABS = [
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
   { id: "offlinequeue", label: "Offline queue" },
+  { id: "merge", label: "Two-phone merge" },
   { id: "syncreview", label: "Sync review" },
   { id: "cloud", label: "Cloud backup" },
   { id: "posreport", label: "POS report" },
@@ -279,6 +281,7 @@ export default function ExciseTabsView() {
       {tab === "order" && <ExciseOrderView />}
       {tab === "account" && <CustomerLoginView />}
       {tab === "offlinequeue" && <OfflineQueueView />}
+      {tab === "merge" && <EventMergeView />}
       {tab === "syncreview" && <SyncReviewView />}
       {tab === "cloud" && <CloudBackupView />}
       {tab === "posreport" && <PosReportView />}
