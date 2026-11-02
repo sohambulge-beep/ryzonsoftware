@@ -73,11 +73,11 @@ function statusOf(b: Business, today: string): { text: string; warn: boolean } {
 }
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) return <p className="p-4 text-sm">The admin panel could not open here.</p>;
     return this.props.children;
   }

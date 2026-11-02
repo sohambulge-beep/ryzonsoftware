@@ -126,7 +126,7 @@ function headersToObj(h: any): Record<string, string> {
   } catch {
     // ignore
   }
-  delete out.authorization; // a fresh login token is added when the entry is sent
+  delete out['authorization']; // a fresh login token is added when the entry is sent
   return out;
 }
 

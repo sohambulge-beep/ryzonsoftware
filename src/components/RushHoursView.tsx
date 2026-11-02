@@ -28,11 +28,11 @@ const inr = (p: number) =>
 const hourLabel = (h: number) => `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) return <p className="p-4 text-sm">The rush hours page could not open here.</p>;
     return this.props.children;
   }

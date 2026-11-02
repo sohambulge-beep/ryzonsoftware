@@ -5,11 +5,11 @@ const input = "rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) return <p className="p-4 text-sm">Start fresh could not open here.</p>;
     return this.props.children;
   }
