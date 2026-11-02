@@ -30,6 +30,11 @@ interface BackupInfo {
   created_at: string;
   summary: { invoices?: number; customers?: number; taps?: number } | null;
 }
+interface Created {
+  name: string;
+  login: string;
+  password: string;
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const localDate = () => {
@@ -85,6 +90,25 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 
 type Phase = "loading" | "nokey" | "signin" | "notadmin" | "error" | "ready";
 
+// Asks the server function to make a login or reset a password. The password comes back only once.
+async function callFn(body: Record<string, unknown>): Promise<{ login: string; password: string }> {
+  const c = getCloudClient();
+  if (!c) throw new Error("Sign in first.");
+  const { data, error } = await c.functions.invoke("admin-customers", { body });
+  if (error) {
+    let detail = "";
+    try {
+      const j = await (error as any).context?.json?.();
+      detail = j?.error ? String(j.error) : "";
+    } catch {
+      // ignore
+    }
+    throw new Error(detail || error.message || "The request failed.");
+  }
+  if (!data || data.ok !== true) throw new Error(String(data?.error ?? "The request failed."));
+  return { login: String(data.login), password: String(data.password) };
+}
+
 function Inner() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -111,6 +135,15 @@ function Inner() {
   const [eUntil, setEUntil] = useState("");
   const [eActive, setEActive] = useState(true);
   const [eNotes, setENotes] = useState("");
+
+  const [nName, setNName] = useState("");
+  const [nOwner, setNOwner] = useState("");
+  const [nPhone, setNPhone] = useState("");
+  const [nPlan, setNPlan] = useState("monthly");
+  const [nPrice, setNPrice] = useState("");
+  const [nLogin, setNLogin] = useState("");
+  const [appLink, setAppLink] = useState("");
+  const [created, setCreated] = useState<Created | null>(null);
 
   const load = useCallback(async () => {
     setMsg("");
@@ -164,6 +197,11 @@ function Inner() {
 
   useEffect(() => {
     setToday(localDate());
+    try {
+      setAppLink(window.location.origin);
+    } catch {
+      // ignore
+    }
     load();
   }, [load]);
 
@@ -285,6 +323,69 @@ function Inner() {
     setBusy(false);
   }
 
+  async function onCreate() {
+    const name = nName.trim();
+    if (!name) {
+      setMsg("Enter the business name");
+      return;
+    }
+    const price = nPrice.trim() === "" ? 0 : Number(nPrice);
+    if (!Number.isFinite(price) || price < 0) {
+      setMsg("The price must be a number (0 or more)");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await callFn({
+        action: "create",
+        business_name: name,
+        owner_name: nOwner.trim(),
+        phone: nPhone.trim(),
+        plan: nPlan,
+        price: Math.round(price * 100) / 100,
+        login_name: nLogin.trim(),
+      });
+      setCreated({ name, login: r.login, password: r.password });
+      setNName("");
+      setNOwner("");
+      setNPhone("");
+      setNPrice("");
+      setNLogin("");
+      await load();
+    } catch (e: any) {
+      setMsg(`Could not create the login: ${e?.message ?? e}`);
+    }
+    setBusy(false);
+  }
+
+  async function onReset(b: Business) {
+    if (!confirm(`Make a new password for ${b.business_name}? The old password will stop working.`)) return;
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await callFn({ action: "reset_password", business_id: b.id });
+      setCreated({ name: b.business_name, login: r.login, password: r.password });
+    } catch (e: any) {
+      setMsg(`Could not reset the password: ${e?.message ?? e}`);
+    }
+    setBusy(false);
+  }
+
+  const credText = (c: Created) =>
+    `Prime Terminal login\nApp: ${appLink}\nUsername: ${c.login}\nPassword: ${c.password}\n` +
+    `Open the app, go to Excise, then My account, sign in and change your password.`;
+
+  async function copyCreds() {
+    if (!created) return;
+    try {
+      await navigator.clipboard.writeText(credText(created));
+      setMsg("Copied.");
+    } catch {
+      setMsg("Copy is not allowed here.");
+    }
+  }
+
   if (phase === "loading") return <p className="p-4 text-sm text-muted-foreground">Loading...</p>;
   if (phase === "nokey") {
     return (
@@ -324,19 +425,112 @@ function Inner() {
       <h1 className="text-xl font-semibold">Admin panel</h1>
       {msg && <p className="text-sm rounded-md border p-2">{msg}</p>}
 
+      {created && (
+        <section className="space-y-2 rounded-md border p-3 text-sm">
+          <p className="font-medium">Login for {created.name}</p>
+          <p>
+            Username: <span className="font-mono">{created.login}</span>
+          </p>
+          <p>
+            Password: <span className="font-mono">{created.password}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            This password is shown only now and is not saved anywhere. Give it to the customer and ask them to change
+            it in My account. If it is lost, use Reset password.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <button className={btn} onClick={copyCreds}>
+              Copy
+            </button>
+            <a
+              className="underline"
+              href={`https://wa.me/?text=${encodeURIComponent(credText(created))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Send on WhatsApp
+            </a>
+            <button
+              className="underline"
+              onClick={() => {
+                if (confirm("Hide this password? It cannot be shown again.")) setCreated(null);
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-3 rounded-md border p-3">
+        <h2 className="font-medium">Add customer</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Business name</span>
+            <input className={`${input} w-full`} maxLength={80} value={nName} onChange={(e) => setNName(e.target.value)} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Owner name</span>
+            <input className={`${input} w-full`} maxLength={80} value={nOwner} onChange={(e) => setNOwner(e.target.value)} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Phone</span>
+            <input
+              className={`${input} w-full`}
+              inputMode="tel"
+              value={nPhone}
+              onChange={(e) => setNPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 15))}
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Plan</span>
+            <select className={`${input} w-full`} value={nPlan} onChange={(e) => setNPlan(e.target.value)}>
+              <option value="monthly">monthly</option>
+              <option value="yearly">yearly</option>
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Price</span>
+            <input
+              className={`${input} w-full`}
+              inputMode="decimal"
+              value={nPrice}
+              onChange={(e) => setNPrice(e.target.value.replace(/[^\d.]/g, "").slice(0, 10))}
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-muted-foreground">Username (leave empty to make one)</span>
+            <input
+              className={`${input} w-full`}
+              autoCapitalize="none"
+              maxLength={30}
+              value={nLogin}
+              onChange={(e) => setNLogin(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
+            />
+          </label>
+          <label className="block space-y-1 sm:col-span-2">
+            <span className="text-sm text-muted-foreground">App link to send with the login</span>
+            <input className={`${input} w-full`} value={appLink} onChange={(e) => setAppLink(e.target.value)} />
+          </label>
+        </div>
+        <button className={btn} disabled={busy} onClick={onCreate}>
+          {busy ? "Please wait..." : "Create login"}
+        </button>
+      </section>
+
       <section className="rounded-md border p-3 text-sm space-y-1">
         <p>
           {businesses.length} customer(s) | {attention} need attention
         </p>
         <p>Total received (latest 1000 payments): {inr(totalReceivedP)}</p>
         <p className="text-xs text-muted-foreground">
-          Customer passwords are never shown here. Create a customer login in Supabase (Authentication, Users) and add
-          the customer row with SQL. This panel shows billing and backup details, not live activity.
+          Customer passwords are never shown here after they are made. If a customer forgets a password, use Reset
+          password on their card. This panel shows billing and backup details, not live activity.
         </p>
       </section>
 
       {businesses.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No customers yet. Add one with the SQL from the guide.</p>
+        <p className="text-sm text-muted-foreground">No customers yet. Add one above.</p>
       ) : (
         <div className="space-y-3">
           {businesses.map((b) => {
@@ -381,6 +575,9 @@ function Inner() {
                     }}
                   >
                     Payments
+                  </button>
+                  <button className="underline" disabled={busy} onClick={() => onReset(b)}>
+                    Reset password
                   </button>
                 </div>
 
