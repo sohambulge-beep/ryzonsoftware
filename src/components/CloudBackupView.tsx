@@ -90,11 +90,11 @@ const localDate = () => {
 };
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) {
       return <p className="p-4 text-sm">Cloud backup could not open here. Please tell the developer.</p>;
     }

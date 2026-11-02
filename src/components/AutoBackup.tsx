@@ -64,11 +64,11 @@ function stamp(ms: number): string {
 type Status = "idle" | "syncing" | "synced" | "failed";
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     return this.state.failed ? null : this.props.children;
   }
 }

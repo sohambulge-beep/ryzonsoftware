@@ -8,11 +8,11 @@ const MAX_BACKOFF_MS = 30 * 60 * 1000;
 const OK_SHOW_MS = 8000;
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     return this.state.failed ? null : this.props.children;
   }
 }

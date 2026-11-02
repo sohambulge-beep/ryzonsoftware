@@ -47,11 +47,11 @@ function makeClient(url: string, key: string): SupabaseClient {
 }
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) return <p className="p-4 text-sm">My account could not open here.</p>;
     return this.props.children;
   }

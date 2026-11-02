@@ -29,8 +29,8 @@ type Phase = "idle" | "hint" | "bye";
 // Copy of the browser history data without our own marks, so the app's router data is kept.
 function plain(s: any): Record<string, any> {
   const out: Record<string, any> = s && typeof s === "object" ? { ...s } : {};
-  delete out.ptBase;
-  delete out.ptGuard;
+  delete out['ptBase'];
+  delete out['ptGuard'];
   return out;
 }
 
@@ -51,11 +51,11 @@ function armGuard() {
 }
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     return this.state.failed ? null : this.props.children;
   }
 }

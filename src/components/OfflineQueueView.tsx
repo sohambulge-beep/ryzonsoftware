@@ -19,11 +19,11 @@ const when = (ms: number) =>
 const preview = (body: string) => (body.length > 140 ? `${body.slice(0, 140)}...` : body);
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     if (this.state.failed) return <p className="p-4 text-sm">The offline queue could not open here.</p>;
     return this.props.children;
   }
