@@ -1,4 +1,5 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
+import StorageGuard from "./StorageGuard";
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -92,8 +93,11 @@ function Inner() {
 
 export default function PwaSetup() {
   return (
-    <Guard>
-      <Inner />
-    </Guard>
+    <>
+      <Guard>
+        <Inner />
+      </Guard>
+      <StorageGuard />
+    </>
   );
 }
