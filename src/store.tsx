@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, InvoiceGst, Payment, Purchase, Settings } from './types';
-import { loadState, saveState, resetToSample, clearAllData } from './data';
+import { loadState, saveState, resetToSample, clearAllData, bootFromIdb } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
 import {
   alwaysInterstate,
@@ -270,6 +270,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveState(db);
   }, [db]);
+
+  // If the safe copy (IndexedDB) is newer than what the phone storage held at start, use that newer copy.
+  useEffect(() => {
+    let alive = true;
+    bootFromIdb()
+      .then(restored => {
+        if (alive && restored) setDb(restored);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const navigate = useCallback((view: ViewId) => {
     setCurrentView(view);
