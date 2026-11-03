@@ -1,6 +1,11 @@
 import type { AppData } from './types';
+import { idbGet, idbSet } from './lib/idbStore';
 
 const STORAGE_KEY = 'TAPTRACK_OS_STORE_V3';
+const AT_KEY = 'TAPTRACK_OS_STORE_V3_AT';
+const IDB_KEY = 'pos-state';
+
+export const STORAGE_EVENT = 'pt-storage';
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - 86400000 * n).toISOString().split('T')[0];
@@ -95,30 +100,183 @@ export const SAMPLE_DATA: AppData = {
   ],
 };
 
+// ---------- Saving: phone storage first, plus a safe second copy in IndexedDB ----------
+
+// The newest data seen in this session, as text. Reading it always gives a fresh copy.
+let latestJson: string | null = null;
+// When the copy in localStorage was made, read before anything is saved in this session.
+let initialLocalAt = -1;
+let bootDone = false;
+let storageFull = false;
+let lastIdbAt = 0;
+let pending: { json: string; at: number } | null = null;
+let idbTimer: ReturnType<typeof setTimeout> | null = null;
+let bootPromise: Promise<AppData | null> | null = null;
+
+function emit() {
+  try {
+    window.dispatchEvent(new Event(STORAGE_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
+function normalize(parsed: Partial<AppData>): AppData {
+  return {
+    settings: parsed.settings ?? INITIAL_DATA.settings,
+    taps: parsed.taps ?? [],
+    suppliers: parsed.suppliers ?? [],
+    customers: parsed.customers ?? [],
+    purchases: parsed.purchases ?? [],
+    invoices: parsed.invoices ?? [],
+    payments: parsed.payments ?? [],
+    expenses: parsed.expenses ?? [],
+  };
+}
+
+function looksValid(x: any): boolean {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    Array.isArray(x.taps) &&
+    Array.isArray(x.customers) &&
+    Array.isArray(x.invoices) &&
+    Array.isArray(x.expenses)
+  );
+}
+
 export function loadState(): AppData {
+  if (initialLocalAt < 0) {
+    try {
+      initialLocalAt = Number(localStorage.getItem(AT_KEY) || 0) || 0;
+    } catch {
+      initialLocalAt = 0;
+    }
+  }
+  if (latestJson) {
+    try {
+      return normalize(JSON.parse(latestJson) as Partial<AppData>);
+    } catch {
+      // fall through
+    }
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AppData>;
-      return {
-        settings: parsed.settings ?? INITIAL_DATA.settings,
-        taps: parsed.taps ?? [],
-        suppliers: parsed.suppliers ?? [],
-        customers: parsed.customers ?? [],
-        purchases: parsed.purchases ?? [],
-        invoices: parsed.invoices ?? [],
-        payments: parsed.payments ?? [],
-        expenses: parsed.expenses ?? [],
-      };
-    }
+    if (raw) return normalize(JSON.parse(raw) as Partial<AppData>);
   } catch {
     // fall through to default
   }
   return structuredClone(INITIAL_DATA);
 }
 
+function flushIdb() {
+  if (!bootDone || !pending) return;
+  if (idbTimer) {
+    clearTimeout(idbTimer);
+    idbTimer = null;
+  }
+  const p = pending;
+  pending = null;
+  void idbSet(IDB_KEY, { at: p.at, json: p.json }).then((ok) => {
+    if (ok) {
+      lastIdbAt = p.at;
+      emit();
+    }
+  });
+}
+
+function queueIdb(json: string, at: number) {
+  pending = { json, at };
+  if (idbTimer) clearTimeout(idbTimer);
+  idbTimer = setTimeout(() => {
+    idbTimer = null;
+    flushIdb();
+  }, 500);
+}
+
 export function saveState(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  let json = '';
+  try {
+    json = JSON.stringify(data);
+  } catch {
+    return;
+  }
+  latestJson = json;
+  const at = Date.now();
+  try {
+    localStorage.setItem(STORAGE_KEY, json);
+    localStorage.setItem(AT_KEY, String(at));
+    if (storageFull) {
+      storageFull = false;
+      emit();
+    }
+  } catch {
+    // The phone storage is full: the safe copy below still keeps the newest data.
+    if (!storageFull) {
+      storageFull = true;
+      emit();
+    }
+  }
+  if (bootDone) queueIdb(json, at);
+}
+
+async function doBoot(): Promise<AppData | null> {
+  let result: AppData | null = null;
+  try {
+    const rec: any = await idbGet(IDB_KEY);
+    if (rec && typeof rec.json === 'string' && Number(rec.at) > Math.max(0, initialLocalAt)) {
+      const parsed = JSON.parse(rec.json) as Partial<AppData>;
+      if (looksValid(parsed)) result = normalize(parsed);
+    }
+  } catch {
+    result = null;
+  }
+  bootDone = true;
+  try {
+    if (result) {
+      latestJson = JSON.stringify(result);
+    } else {
+      if (!latestJson) latestJson = JSON.stringify(loadState());
+      let at = 0;
+      try {
+        at = Number(localStorage.getItem(AT_KEY) || 0) || 0;
+      } catch {
+        at = 0;
+      }
+      queueIdb(latestJson, at || Date.now());
+    }
+  } catch {
+    // ignore
+  }
+  return result;
+}
+
+// Called once when the app opens. If the safe copy is newer than what the phone storage holds
+// (for example because the storage was full and could not keep the last save), that copy is returned.
+export function bootFromIdb(): Promise<AppData | null> {
+  if (!bootPromise) bootPromise = doBoot();
+  return bootPromise;
+}
+
+export function getStorageInfo(): { full: boolean; usedChars: number; lastIdbAt: number } {
+  let used = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      used += k.length + (localStorage.getItem(k) ?? '').length;
+    }
+  } catch {
+    // ignore
+  }
+  return { full: storageFull, usedChars: used, lastIdbAt };
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushIdb);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushIdb();
+  });
 }
 
 export function resetToSample(): AppData {
