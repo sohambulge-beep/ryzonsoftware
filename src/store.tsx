@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expense, Invoice, InvoiceGst, Payment, Purchase, Settings } from './types';
 import { loadState, saveState, resetToSample, clearAllData, bootFromIdb } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
+import { addVoidEntry, whoAmI } from './lib/voidLog';
 import {
   alwaysInterstate,
   computeGst,
@@ -29,7 +30,7 @@ export interface CustomerInput {
 }
 
 // ---------- Two-phone merge support ----------
-export type PosEventKind = 'invoice' | 'payment' | 'purchase' | 'expense' | 'customer' | 'tap' | 'supplier';
+export type PosEventKind = 'invoice' | 'payment' | 'purchase' | 'expense' | 'customer' | 'tap' | 'supplier' | 'void';
 export interface PosEvent {
   kind: PosEventKind;
   payload: any;
@@ -37,6 +38,31 @@ export interface PosEvent {
 
 // The merge screen lives outside this provider, so it hands the other phone's records over through this bridge.
 export const storeBridge: { merge: ((events: PosEvent[]) => void) | null } = { merge: null };
+
+// Cancels one bill: the bill goes away, the litres go back into the keg, and the customer's totals are reversed.
+// If the bill is not there (already cancelled or never arrived), nothing changes.
+function applyVoid(db: AppData, id: string): AppData {
+  const inv = db.invoices.find(i => i.id === id);
+  if (!inv) return db;
+  const onTab = inv.paymentMethod === 'Tab';
+  return {
+    ...db,
+    invoices: db.invoices.filter(i => i.id !== id),
+    taps: db.taps.map(t => {
+      const back = inv.items.filter(i => i.beerId === t.id).reduce((s, i) => s + (i.litersTotal || 0), 0);
+      return back > 0 ? { ...t, currentLiters: t.currentLiters + back } : t;
+    }),
+    customers: db.customers.map(c =>
+      c.id === inv.customerId
+        ? {
+            ...c,
+            totalSpent: Math.max(0, (c.totalSpent || 0) - inv.total),
+            currentBalance: onTab ? Math.max(0, (c.currentBalance || 0) - inv.balanceDue) : c.currentBalance,
+          }
+        : c
+    ),
+  };
+}
 
 // Adds one record made on another phone, with exactly the same effect it had there.
 // Applying the same record twice changes nothing.
@@ -135,6 +161,9 @@ function applyPosEvent(db: AppData, ev: PosEvent): AppData {
         ),
       };
     }
+
+    case 'void':
+      return applyVoid(db, p.id);
 
     default:
       return db;
@@ -253,6 +282,7 @@ interface StoreContextValue {
   deleteExpense: (id: string) => void;
   savePurchase: (data: { supplierId: string; beerId: string; kegQty: number; litersPerKeg: number; costPerLiter: number }) => void;
   savePayment: (data: { customerId: string; amount: number; paymentMethod: string; notes: string }) => void;
+  voidInvoice: (invoiceId: string, reason: string) => { ok: boolean; message: string };
   restoreData: (data: AppData) => void;
   loadSample: () => void;
   clearAll: () => void;
@@ -706,6 +736,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Cancels a bill with a reason. The record of the cancel is saved first; only then does the bill go away.
+  const voidInvoice = useCallback((invoiceId: string, reason: string): { ok: boolean; message: string } => {
+    const inv = db.invoices.find(i => i.id === invoiceId);
+    if (!inv) return { ok: false, message: 'This bill was not found. It may already be cancelled.' };
+    const why = reason.trim();
+    if (why.length < 3) return { ok: false, message: 'Please write a reason (at least 3 letters).' };
+    if (inv.paymentMethod === 'Tab' && inv.paidAmount > 0) {
+      return {
+        ok: false,
+        message: `This udhaar bill already has ₹${inv.paidAmount.toFixed(2)} paid against it, so it cannot be cancelled here. Keep the bill and settle it with the customer.`,
+      };
+    }
+    const saved = addVoidEntry({
+      id: inv.id,
+      invoiceNo: inv.invoiceNo,
+      at: new Date().toISOString(),
+      reason: why.slice(0, 200),
+      by: whoAmI(),
+      total: inv.total,
+      paymentMethod: inv.paymentMethod,
+      customerName: inv.customerName,
+      local: true,
+    });
+    if (!saved) {
+      return { ok: false, message: 'Could not save the cancel record on this phone, so the bill was not cancelled.' };
+    }
+    setDb(prev => applyVoid(prev, invoiceId));
+    return { ok: true, message: `Bill ${inv.invoiceNo} cancelled.` };
+  }, [db]);
+
   const restoreData = useCallback((data: AppData) => {
     setDb(data);
   }, []);
@@ -734,7 +794,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     db, cart, currentView, modal, navigate, openModal, closeModal,
     clearCart, addToCart, updateCartQty, setCartCustomer, cartCustomerId,
     processCheckout, processTableCheckout, quickPour, saveCustomer, saveBeer, saveSupplier,
-    saveExpense, deleteExpense, savePurchase, savePayment,
+    saveExpense, deleteExpense, savePurchase, savePayment, voidInvoice,
     restoreData, loadSample, clearAll,
   };
 
