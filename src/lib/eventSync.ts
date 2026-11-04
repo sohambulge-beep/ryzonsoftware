@@ -2,6 +2,7 @@ import { loadState } from "../data";
 import { storeBridge, type PosEvent } from "../store";
 import { getCloudClient } from "./adminCheck";
 import { deviceId } from "./stockSync";
+import { addVoidEntry, readVoidLog } from "./voidLog";
 
 type Kind = PosEvent["kind"];
 
@@ -77,7 +78,9 @@ function recordTime(kind: Kind, payload: any): number {
       ? payload?.timestamp
       : kind === "purchase" || kind === "expense"
         ? payload?.date
-        : "";
+        : kind === "void"
+          ? payload?.voidedAt
+          : "";
   const t = Date.parse(String(raw ?? ""));
   return Number.isNaN(t) ? 0 : t;
 }
@@ -146,6 +149,7 @@ export async function turnOn(): Promise<void> {
       if (rec && typeof rec.id === "string" && rec.id) pub.add(`${s.kind}|${eventKey(s.kind, rec)}`);
     }
   }
+  for (const v of readVoidLog()) pub.add(`void|${v.id}`);
 
   let from = 0;
   let lastAt = "";
@@ -244,6 +248,25 @@ export async function runEventSync(): Promise<MergeStats> {
         fresh.push({ kind: s.kind, key, payload });
       }
     }
+    // Bills cancelled on this phone go last, so they always arrive after the bill itself.
+    for (const v of readVoidLog()) {
+      if (!v.local) continue;
+      if (pub.has(`void|${v.id}`)) continue;
+      fresh.push({
+        kind: "void",
+        key: v.id,
+        payload: {
+          id: v.id,
+          invoiceNo: v.invoiceNo,
+          voidedAt: v.at,
+          reason: v.reason,
+          by: v.by,
+          total: v.total,
+          paymentMethod: v.paymentMethod,
+          customerName: v.customerName,
+        },
+      });
+    }
     for (let i = 0; i < fresh.length; i += 100) {
       const chunk = fresh.slice(i, i + 100);
       const rows = chunk.map((f) => ({
@@ -310,6 +333,22 @@ export async function runEventSync(): Promise<MergeStats> {
       if (todo.length > 0) {
         storeBridge.merge(todo.map((e) => ({ kind: e.kind, payload: e.payload })));
         out.applied = todo.length;
+        // Keep a record of bills the other phone cancelled, so the history here is complete too.
+        for (const e of todo) {
+          if (e.kind === "void" && e.payload && typeof e.payload.id === "string") {
+            addVoidEntry({
+              id: e.payload.id,
+              invoiceNo: String(e.payload.invoiceNo ?? ""),
+              at: String(e.payload.voidedAt ?? ""),
+              reason: String(e.payload.reason ?? ""),
+              by: String(e.payload.by ?? ""),
+              total: Number(e.payload.total) || 0,
+              paymentMethod: String(e.payload.paymentMethod ?? ""),
+              customerName: String(e.payload.customerName ?? ""),
+              local: false,
+            });
+          }
+        }
       }
       for (const e of incoming) pub.add(`${e.kind}|${e.key}`);
       writePub(uid, pub);
