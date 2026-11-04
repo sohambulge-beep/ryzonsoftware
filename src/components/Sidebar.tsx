@@ -60,6 +60,17 @@ const RECENT_KEY = 'pt_recent_views';
 const MAX_KEPT = 8;
 const SHOW_RECENT = 3;
 
+const GUIDE_KEY = 'pt_guide_hidden';
+const DEFAULT_BAR_NAME = 'My Bar';
+
+interface GuideStep {
+  id: string;
+  label: string;
+  hint: string;
+  view: ViewId;
+  done: boolean;
+}
+
 function readRecents(): ViewId[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY);
@@ -87,6 +98,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const [clock, setClock] = useState('');
   const [recents, setRecents] = useState<ViewId[]>([]);
   const [recentsReady, setRecentsReady] = useState(false);
+  const [guideHidden, setGuideHidden] = useState(true);
+  const [backupDone, setBackupDone] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -117,6 +130,32 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }, [recents, recentsReady]);
 
+  // The guide stays hidden until the saved choice is read, so the first screen does not flicker.
+  useEffect(() => {
+    try {
+      setGuideHidden(localStorage.getItem(GUIDE_KEY) === '1');
+    } catch {
+      setGuideHidden(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      setBackupDone(!!localStorage.getItem('pt_auto_last_at'));
+    } catch {
+      // ignore
+    }
+  }, [db, currentView]);
+
+  function hideGuide() {
+    setGuideHidden(true);
+    try {
+      localStorage.setItem(GUIDE_KEY, '1');
+    } catch {
+      // ignore
+    }
+  }
+
   const totalExpenses = db.expenses.reduce((s, e) => s + e.amount, 0);
   const totalDue = db.customers.reduce((s, c) => s + c.currentBalance, 0);
   const lowStock = db.taps.filter(t => t.currentLiters < 10).length;
@@ -145,6 +184,52 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     .filter(id => id !== currentView && id !== 'dashboard' && allowedIds.has(id) && ITEM_LOOKUP.has(id))
     .slice(0, SHOW_RECENT)
     .map(id => ({ id, ...ITEM_LOOKUP.get(id)! }));
+
+  const barName = String(db.settings?.barName ?? '').trim();
+  const steps: GuideStep[] = [
+    {
+      id: 'name',
+      label: 'Set your bar name and tax',
+      hint: 'Open Settings and type your own business name.',
+      view: 'settings',
+      done: barName !== '' && barName !== DEFAULT_BAR_NAME,
+    },
+    {
+      id: 'taps',
+      label: 'Add your beers (taps)',
+      hint: 'Open Stock & Kegs and add each beer with its price.',
+      view: 'inventory',
+      done: db.taps.length > 0,
+    },
+    {
+      id: 'customers',
+      label: 'Add a regular customer',
+      hint: 'Optional. Open Customers & Tabs to add one.',
+      view: 'customers',
+      done: db.customers.length > 0,
+    },
+    {
+      id: 'bill',
+      label: 'Make your first bill',
+      hint: 'Open Point of Sale and bill one pint.',
+      view: 'pos',
+      done: db.invoices.length > 0,
+    },
+    {
+      id: 'backup',
+      label: 'Turn on cloud backup',
+      hint: 'Open Excise, then the Cloud backup tab (or My account) and sign in.',
+      view: 'excise',
+      done: backupDone,
+    },
+  ];
+  const doneCount = steps.filter(s => s.done).length;
+  const showGuide =
+    !guideHidden &&
+    doneCount < steps.length &&
+    allowedIds.has('inventory') &&
+    allowedIds.has('pos') &&
+    allowedIds.has('settings');
 
   return (
     <>
@@ -175,6 +260,51 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
         {/* Navigation */}
         <div className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin space-y-5">
+          {showGuide && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400">
+                  Getting started
+                </span>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  {doneCount} of {steps.length}
+                </span>
+              </div>
+              <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full bg-amber-500"
+                  style={{ width: `${Math.round((doneCount * 100) / steps.length)}%` }}
+                />
+              </div>
+              <div className="space-y-1">
+                {steps.map(step => (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => {
+                      navigate(step.view);
+                      onClose();
+                    }}
+                    className="flex w-full items-start gap-x-2.5 rounded-md px-1.5 py-2 text-left text-sm touch-manipulation hover:bg-zinc-800/70 active:bg-zinc-800"
+                  >
+                    <i
+                      className={`${
+                        step.done ? 'fa-solid fa-circle-check text-emerald-400' : 'fa-regular fa-circle text-zinc-500'
+                      } mt-0.5 w-4 text-center`}
+                    />
+                    <span className="flex-1">
+                      <span className={step.done ? 'text-zinc-500 line-through' : 'text-zinc-200'}>{step.label}</span>
+                      {!step.done && <span className="block text-[11px] text-zinc-500">{step.hint}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="mt-2 text-[11px] text-zinc-500 underline" onClick={hideGuide}>
+                Hide guide
+              </button>
+            </div>
+          )}
+
           {recentItems.length > 0 && (
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider px-3 mb-2 font-semibold text-zinc-500">
