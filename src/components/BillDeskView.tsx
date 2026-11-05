@@ -2,6 +2,7 @@ import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useStore } from "@/store";
 import { VOID_EVENT, readVoidLog, type VoidEntry } from "@/lib/voidLog";
 import { readCachedGstSettings } from "@/lib/gst";
+import { useOwnerAccess } from "@/lib/ownerAccess";
 
 const input = "rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
@@ -145,6 +146,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 
 function Inner() {
   const { db, voidInvoice } = useStore();
+  const { isOwner } = useOwnerAccess();
   const [today, setToday] = useState("");
   const [period, setPeriod] = useState("today");
   const [query, setQuery] = useState("");
@@ -257,6 +259,10 @@ function Inner() {
   }
 
   function onVoid(inv: any) {
+    if (!isOwner) {
+      setMsg("Only the owner can cancel a bill.");
+      return;
+    }
     const why = reasonSel === "Other" ? note.trim() : note.trim() ? `${reasonSel} - ${note.trim()}` : reasonSel;
     if (why.length < 3) {
       setMsg("Write the reason (at least 3 letters).");
@@ -333,6 +339,7 @@ function Inner() {
         away from the sales, the litres go back into the keg and the customer's udhaar is corrected. Cancelling cannot
         be undone; make a new bill if needed.
       </p>
+      {!isOwner && <p className="text-sm rounded-md border p-2">Cancelling a bill is for the owner only.</p>}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block space-y-1">
@@ -397,20 +404,22 @@ function Inner() {
                   <button className="underline" onClick={() => setJob({ inv, n: Date.now() })}>
                     Print
                   </button>
-                  <button
-                    className="underline"
-                    onClick={() => {
-                      setVoidFor(voidFor === id ? "" : id);
-                      setMsg("");
-                    }}
-                  >
-                    Cancel bill
-                  </button>
+                  {isOwner && (
+                    <button
+                      className="underline"
+                      onClick={() => {
+                        setVoidFor(voidFor === id ? "" : id);
+                        setMsg("");
+                      }}
+                    >
+                      Cancel bill
+                    </button>
+                  )}
                 </div>
                 {tooLong && <p className="text-muted-foreground">This bill is too long for WhatsApp. Use Copy.</p>}
                 {!num && <p className="text-muted-foreground">No phone number saved: WhatsApp will ask whom to send to.</p>}
 
-                {voidFor === id && (
+                {isOwner && voidFor === id && (
                   <div className="space-y-3 border-t pt-3">
                     {blocked ? (
                       <p className="text-destructive">
