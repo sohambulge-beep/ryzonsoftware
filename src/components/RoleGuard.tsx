@@ -5,6 +5,8 @@ import {
   type PermissionKey,
 } from "@/lib/staffLoginService";
 
+const CACHE_KEY = "pt_role_cache";
+
 interface RoleContextValue {
   role: AppRole;
   permissions: PermissionKey[];
@@ -13,6 +15,50 @@ interface RoleContextValue {
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null);
+
+// The login saved on this phone, read without internet.
+function savedUid(): string {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+        const p = JSON.parse(localStorage.getItem(k) || "null");
+        const id = p?.user?.id ?? p?.currentSession?.user?.id;
+        if (typeof id === "string" && id) return id;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return "";
+}
+
+// The last role that was loaded for THIS login, used only when the server cannot be asked (for example offline).
+function readCache(): { role: AppRole; permissions: PermissionKey[] } | null {
+  try {
+    const uid = savedUid();
+    if (!uid) return null;
+    const raw = localStorage.getItem(CACHE_KEY);
+    const p = raw ? JSON.parse(raw) : null;
+    if (!p || p.uid !== uid || typeof p.role !== "string" || !Array.isArray(p.permissions)) return null;
+    return {
+      role: p.role as AppRole,
+      permissions: p.permissions.filter((x: any) => typeof x === "string") as PermissionKey[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(role: AppRole, permissions: PermissionKey[]) {
+  try {
+    const uid = savedUid();
+    if (!uid) return;
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ uid, role, permissions }));
+  } catch {
+    // ignore
+  }
+}
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("waiter");
@@ -27,9 +73,15 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         if (active) {
           setRole(r.role);
           setPermissions(r.permissions);
+          writeCache(r.role, r.permissions);
         }
       } catch (e) {
         console.error("Role load failed:", e);
+        const cached = readCache();
+        if (active && cached) {
+          setRole(cached.role);
+          setPermissions(cached.permissions);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -95,16 +147,3 @@ export function RoleGuard({ module, children }: { module: string; children: Reac
   }
   return <>{children}</>;
 }
-
-// INTEGRATION (3 jagah, chhote edits):
-// 1) src/routes/_authenticated/index.tsx:
-//      import { RoleProvider, RoleGuard } from "@/components/RoleGuard";
-//      <PlanProvider> ke andar: <RoleProvider> ... </RoleProvider>
-// 2) views record mein wrap karo:
-//      pos: <RoleGuard module="pos"><PosView /></RoleGuard>,
-//      billing: <RoleGuard module="billing"><BillingView /></RoleGuard>,  ... (sab gated views)
-// 3) src/components/Sidebar.tsx:
-//      import { useRole, filterItemsForRole } from "@/components/RoleGuard";
-//      const { role, permissions } = useRole();
-//      render se pehle: const visibleItems = filterItemsForRole(group.items, role, permissions);
-//      aur map(visibleItems ...)
