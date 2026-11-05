@@ -39,6 +39,7 @@ import AdminCustomerDataView from "@/components/AdminCustomerDataView";
 import AdminBillsView from "@/components/AdminBillsView";
 import AdminStockView from "@/components/AdminStockView";
 import { checkIsAdmin } from "@/lib/adminCheck";
+import { useOwnerAccess } from "@/lib/ownerAccess";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
@@ -90,6 +91,22 @@ type TabId = (typeof TABS)[number]["id"] | (typeof ADMIN_TABS)[number]["id"];
 const ALL_TABS: readonly { id: TabId; label: string }[] = [...TABS, ...ADMIN_TABS];
 const ALL_IDS: TabId[] = ALL_TABS.map((t) => t.id);
 
+// The tabs a staff member (anyone who is not the owner) can see. The owner sees every tab.
+const STAFF_TABS: TabId[] = [
+  "sales",
+  "tp",
+  "counter",
+  "billdesk",
+  "lowstock",
+  "stockcheck",
+  "wastage",
+  "bookings",
+  "udhaar",
+  "order",
+  "offlinequeue",
+];
+const FALLBACK_TAB: TabId = "sales";
+
 const RECENT_KEY = "pt_excise_recent_tabs";
 const HIDDEN_KEY = "pt_excise_hidden_tabs";
 const MAX_RECENT = 30;
@@ -138,6 +155,11 @@ export default function ExciseTabsView() {
   const [hidden, setHidden] = useState<TabId[]>([]);
   const [editing, setEditing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { isOwner } = useOwnerAccess();
+
+  // A staff member sees only the staff tabs. The owner sees all tabs.
+  const canSee = (id: TabId) => isOwner || STAFF_TABS.includes(id);
+  const current: TabId = canSee(tab) ? tab : FALLBACK_TAB;
 
   // Saved order and hidden tabs are read only after the page has opened (keeps server and browser the same).
   useEffect(() => {
@@ -167,11 +189,11 @@ export default function ExciseTabsView() {
   // Keeps the active tab in view in the scrolling bar.
   useEffect(() => {
     try {
-      document.getElementById(`excise-tab-${tab}`)?.scrollIntoView({ inline: "nearest", block: "nearest" });
+      document.getElementById(`excise-tab-${current}`)?.scrollIntoView({ inline: "nearest", block: "nearest" });
     } catch {
       // ignore
     }
-  }, [tab, order]);
+  }, [current, order]);
 
   // The saved order is not changed on screen now, only remembered for the next visit,
   // so the buttons do not move under the finger.
@@ -182,7 +204,7 @@ export default function ExciseTabsView() {
 
   function toggleHidden(id: TabId) {
     setHidden((prev) => {
-      const available = ALL_TABS.filter((t) => isAdmin || !isAdminTab(t.id)).map((t) => t.id);
+      const available = ALL_TABS.filter((t) => canSee(t.id) && (isAdmin || !isAdminTab(t.id))).map((t) => t.id);
       let next: TabId[];
       if (prev.includes(id)) {
         next = prev.filter((x) => x !== id);
@@ -208,12 +230,13 @@ export default function ExciseTabsView() {
   }
 
   const shown = order.filter((id) => {
+    if (!canSee(id)) return false;
     if (isAdminTab(id) && !isAdmin) return false;
-    if (hidden.includes(id) && id !== tab) return false;
+    if (hidden.includes(id) && id !== current) return false;
     return true;
   });
 
-  const customizable = ALL_TABS.filter((t) => isAdmin || !isAdminTab(t.id));
+  const customizable = ALL_TABS.filter((t) => canSee(t.id) && (isAdmin || !isAdminTab(t.id)));
 
   return (
     <div className="space-y-4">
@@ -225,7 +248,7 @@ export default function ExciseTabsView() {
             type="button"
             onClick={() => pick(id)}
             className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
-              tab === id ? "bg-amber-500 text-zinc-950" : "bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800"
+              current === id ? "bg-amber-500 text-zinc-950" : "bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800"
             }`}
           >
             {labelOf(id)}
@@ -256,45 +279,45 @@ export default function ExciseTabsView() {
         </div>
       )}
 
-      {tab === "brands" && <ExciseView />}
-      {tab === "tp" && <ExciseTpView />}
-      {tab === "sales" && <ExciseSalesView />}
-      {tab === "prices" && <ExciseBrandsManageView />}
-      {tab === "return" && <ExciseFlr4View />}
-      {tab === "bulklitre" && <ExciseBulkLitreView />}
-      {tab === "register" && <ExciseRegisterView />}
-      {tab === "value" && <ExciseValueView />}
-      {tab === "opening" && <ExciseOpeningStockView />}
-      {tab === "lowstock" && <ExciseLowStockView />}
-      {tab === "bulk" && <ExciseBulkSalesView />}
-      {tab === "stockcheck" && <ExciseStockCheckView />}
-      {tab === "forecast" && <ExciseForecastView />}
-      {tab === "wastage" && <WastageLogView />}
-      {tab === "report" && <ExciseSalesReportView />}
-      {tab === "billdesk" && <BillDeskView />}
-      {tab === "alerts" && <BillAlertsView />}
-      {tab === "itemprofit" && <ItemProfitView />}
-      {tab === "rush" && <RushHoursView />}
-      {tab === "health" && <ExciseHealthCheckView />}
-      {tab === "summary" && <ExciseSummaryView />}
-      {tab === "dayclose" && <DayCloseView />}
-      {tab === "cashclose" && <CashClosingView />}
-      {tab === "udhaar" && <UdhaarReminderView />}
-      {tab === "payables" && <PayablesView />}
-      {tab === "club" && <CustomerClubView />}
-      {tab === "bookings" && <BookingsView />}
-      {tab === "counter" && <ExciseCounterView />}
-      {tab === "order" && <ExciseOrderView />}
-      {tab === "account" && <CustomerLoginView />}
-      {tab === "offlinequeue" && <OfflineQueueView />}
-      {tab === "merge" && <EventMergeView />}
-      {tab === "syncreview" && <SyncReviewView />}
-      {tab === "cloud" && <CloudBackupView />}
-      {tab === "posreport" && <PosReportView />}
-      {tab === "admin" && isAdmin && <AdminPanelView />}
-      {tab === "custdata" && isAdmin && <AdminCustomerDataView />}
-      {tab === "cloudbills" && isAdmin && <AdminBillsView />}
-      {tab === "cloudstock" && isAdmin && <AdminStockView />}
+      {current === "brands" && <ExciseView />}
+      {current === "tp" && <ExciseTpView />}
+      {current === "sales" && <ExciseSalesView />}
+      {current === "prices" && <ExciseBrandsManageView />}
+      {current === "return" && <ExciseFlr4View />}
+      {current === "bulklitre" && <ExciseBulkLitreView />}
+      {current === "register" && <ExciseRegisterView />}
+      {current === "value" && <ExciseValueView />}
+      {current === "opening" && <ExciseOpeningStockView />}
+      {current === "lowstock" && <ExciseLowStockView />}
+      {current === "bulk" && <ExciseBulkSalesView />}
+      {current === "stockcheck" && <ExciseStockCheckView />}
+      {current === "forecast" && <ExciseForecastView />}
+      {current === "wastage" && <WastageLogView />}
+      {current === "report" && <ExciseSalesReportView />}
+      {current === "billdesk" && <BillDeskView />}
+      {current === "alerts" && <BillAlertsView />}
+      {current === "itemprofit" && <ItemProfitView />}
+      {current === "rush" && <RushHoursView />}
+      {current === "health" && <ExciseHealthCheckView />}
+      {current === "summary" && <ExciseSummaryView />}
+      {current === "dayclose" && <DayCloseView />}
+      {current === "cashclose" && <CashClosingView />}
+      {current === "udhaar" && <UdhaarReminderView />}
+      {current === "payables" && <PayablesView />}
+      {current === "club" && <CustomerClubView />}
+      {current === "bookings" && <BookingsView />}
+      {current === "counter" && <ExciseCounterView />}
+      {current === "order" && <ExciseOrderView />}
+      {current === "account" && <CustomerLoginView />}
+      {current === "offlinequeue" && <OfflineQueueView />}
+      {current === "merge" && <EventMergeView />}
+      {current === "syncreview" && <SyncReviewView />}
+      {current === "cloud" && <CloudBackupView />}
+      {current === "posreport" && <PosReportView />}
+      {current === "admin" && isAdmin && <AdminPanelView />}
+      {current === "custdata" && isAdmin && <AdminCustomerDataView />}
+      {current === "cloudbills" && isAdmin && <AdminBillsView />}
+      {current === "cloudstock" && isAdmin && <AdminStockView />}
     </div>
   );
 }
