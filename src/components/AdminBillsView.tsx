@@ -5,6 +5,9 @@ const input = "rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
 const PAGE = 500;
 const SHOW = 100;
+const OLD_COLS =
+  "bill_key, invoice_no, billed_at, customer_name, payment_method, status, total, tax, paid_amount, balance_due, items, synced_at";
+const COLS = `${OLD_COLS}, voided, void_reason, voided_at`;
 
 interface Biz {
   id: string;
@@ -25,6 +28,9 @@ interface Bill {
   balance_due: number;
   items: any;
   synced_at: string;
+  voided?: boolean;
+  void_reason?: string;
+  voided_at?: string | null;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -78,7 +84,10 @@ function Inner() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [bills, setBills] = useState<Bill[]>([]);
+  const [cancelled, setCancelled] = useState<Bill[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [cancelledCount, setCancelledCount] = useState(0);
+  const [oldColumns, setOldColumns] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [msg, setMsg] = useState("");
   const [reload, setReload] = useState(0);
@@ -125,7 +134,10 @@ function Inner() {
 
   useEffect(() => {
     setBills([]);
+    setCancelled([]);
     setTotalCount(0);
+    setCancelledCount(0);
+    setOldColumns(false);
     const biz = list.find((b) => b.id === selected);
     if (!biz || !biz.user_id) {
       reqRef.current++;
@@ -138,22 +150,40 @@ function Inner() {
     const id = ++reqRef.current;
     setLoadingData(true);
     setMsg("");
+
+    // flag: false = bills that stand, true = cancelled bills, null = all (used only if the new columns are missing)
+    const query = (cols: string, flag: boolean | null) => {
+      let q: any = c
+        .from("pos_bills")
+        .select(cols, { count: "exact" })
+        .eq("user_id", biz.user_id as string);
+      if (from) q = q.gte("billed_at", new Date(`${from}T00:00:00`).toISOString());
+      if (to) q = q.lte("billed_at", new Date(`${to}T23:59:59.999`).toISOString());
+      if (flag !== null) q = q.eq("voided", flag);
+      return q.order("billed_at", { ascending: false }).range(0, flag === true ? 99 : PAGE - 1);
+    };
+    type Res = { data: any[] | null; error: any; count: number | null };
+
     (async () => {
       try {
-        let q = c
-          .from("pos_bills")
-          .select(
-            "bill_key, invoice_no, billed_at, customer_name, payment_method, status, total, tax, paid_amount, balance_due, items, synced_at",
-            { count: "exact" }
-          )
-          .eq("user_id", biz.user_id as string);
-        if (from) q = q.gte("billed_at", new Date(`${from}T00:00:00`).toISOString());
-        if (to) q = q.lte("billed_at", new Date(`${to}T23:59:59.999`).toISOString());
-        const { data, error, count } = await q.order("billed_at", { ascending: false }).range(0, PAGE - 1);
+        const [live, gone] = (await Promise.all([query(COLS, false), query(COLS, true)])) as [Res, Res];
         if (id !== reqRef.current) return;
-        if (error) throw new Error(error.message);
-        setBills((data ?? []) as Bill[]);
-        setTotalCount(count ?? (data ?? []).length);
+        if (live.error && String(live.error.message ?? "").includes("voided")) {
+          // The new columns are not in the database yet: show the bills the old way.
+          const old = (await query(OLD_COLS, null)) as Res;
+          if (id !== reqRef.current) return;
+          if (old.error) throw new Error(old.error.message);
+          setBills((old.data ?? []) as Bill[]);
+          setTotalCount(old.count ?? (old.data ?? []).length);
+          setOldColumns(true);
+          return;
+        }
+        if (live.error) throw new Error(live.error.message);
+        if (gone.error) throw new Error(gone.error.message);
+        setBills((live.data ?? []) as Bill[]);
+        setTotalCount(live.count ?? (live.data ?? []).length);
+        setCancelled((gone.data ?? []) as Bill[]);
+        setCancelledCount(gone.count ?? (gone.data ?? []).length);
       } catch (e: any) {
         if (id === reqRef.current) setMsg(`Could not load the bills: ${e.message ?? e}`);
       } finally {
@@ -179,10 +209,11 @@ function Inner() {
       taxP: sum((b) => b.tax),
       paidP: sum((b) => b.paid_amount),
       dueP: sum((b) => b.balance_due),
+      cancelledP: cancelled.reduce((s, b) => s + paise(b.total), 0),
       methods: Array.from(byMethod.entries()).sort((a, b) => b[1].totalP - a[1].totalP),
       lastSync,
     };
-  }, [bills]);
+  }, [bills, cancelled]);
 
   if (phase === "loading") return <p className="p-4 text-sm text-muted-foreground">Loading...</p>;
   if (phase === "nokey" || phase === "signin") {
@@ -208,6 +239,7 @@ function Inner() {
       <p className="text-sm text-muted-foreground">
         Read-only list of the POS bills a customer's phone has saved to the cloud. Bills appear here about a minute
         after they are made, only when the customer is signed in with My account on that phone and has internet.
+        Cancelled bills are not counted in the totals.
       </p>
 
       <label className="block space-y-1">
@@ -242,14 +274,21 @@ function Inner() {
 
       {loadingData && <p className="text-sm text-muted-foreground">Loading the bills...</p>}
 
-      {selected && !loadingData && bills.length === 0 && (
+      {oldColumns && (
+        <p className="text-sm rounded-md border p-2">
+          The database has not got the new "cancelled" columns yet, so cancelled bills cannot be separated. Run the
+          SQL from the guide.
+        </p>
+      )}
+
+      {selected && !loadingData && bills.length === 0 && cancelled.length === 0 && (
         <p className="text-sm rounded-md border p-2">
           No bill in this period. If the customer has made bills, check that they are signed in with My account and
           that the phone has internet.
         </p>
       )}
 
-      {bills.length > 0 && (
+      {(bills.length > 0 || cancelled.length > 0) && (
         <>
           <section className="rounded-md border p-3 text-sm space-y-1">
             <p className="font-medium">
@@ -262,37 +301,67 @@ function Inner() {
             <p>
               Collected on bills {inr(view.paidP)} | Still due {inr(view.dueP)}
             </p>
+            {cancelledCount > 0 && (
+              <p className="text-muted-foreground">
+                Cancelled and not counted: {cancelledCount} bill(s), {inr(view.cancelledP)}
+              </p>
+            )}
             <p className="text-muted-foreground">Last saved from the phone: {view.lastSync ? when(view.lastSync) : "-"}</p>
           </section>
 
-          <section className="space-y-1 text-sm">
-            <h2 className="font-medium">By payment method</h2>
-            {view.methods.map(([name, v]) => (
-              <p key={name}>
-                {name} | {v.n} bill(s) | {inr(v.totalP)}
-              </p>
-            ))}
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="font-medium">Bills (latest first)</h2>
-            {bills.slice(0, SHOW).map((b) => (
-              <div key={b.bill_key} className="rounded-md border p-3 text-sm space-y-1">
-                <div className="flex justify-between gap-3">
-                  <span className="font-medium">{b.invoice_no || "Bill"}</span>
-                  <span className="font-medium">{inr(paise(b.total))}</span>
-                </div>
-                <p className="text-muted-foreground">
-                  {when(b.billed_at)} | {b.customer_name || "Walk-in"} | {b.payment_method || "unknown"} | {b.status}
+          {view.methods.length > 0 && (
+            <section className="space-y-1 text-sm">
+              <h2 className="font-medium">By payment method</h2>
+              {view.methods.map(([name, v]) => (
+                <p key={name}>
+                  {name} | {v.n} bill(s) | {inr(v.totalP)}
                 </p>
-                {itemsText(b.items) && <p>{itemsText(b.items)}</p>}
-                {paise(b.balance_due) > 0 && <p className="text-destructive">Due {inr(paise(b.balance_due))}</p>}
-              </div>
-            ))}
-            {bills.length > SHOW && (
-              <p className="text-xs text-muted-foreground">{bills.length - SHOW} more bills are counted above but not listed.</p>
-            )}
-          </section>
+              ))}
+            </section>
+          )}
+
+          {bills.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="font-medium">Bills (latest first)</h2>
+              {bills.slice(0, SHOW).map((b) => (
+                <div key={b.bill_key} className="rounded-md border p-3 text-sm space-y-1">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-medium">{b.invoice_no || "Bill"}</span>
+                    <span className="font-medium">{inr(paise(b.total))}</span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {when(b.billed_at)} | {b.customer_name || "Walk-in"} | {b.payment_method || "unknown"} | {b.status}
+                  </p>
+                  {itemsText(b.items) && <p>{itemsText(b.items)}</p>}
+                  {paise(b.balance_due) > 0 && <p className="text-destructive">Due {inr(paise(b.balance_due))}</p>}
+                </div>
+              ))}
+              {bills.length > SHOW && (
+                <p className="text-xs text-muted-foreground">{bills.length - SHOW} more bills are counted above but not listed.</p>
+              )}
+            </section>
+          )}
+
+          {cancelled.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="font-medium">Cancelled bills (not counted)</h2>
+              {cancelled.map((b) => (
+                <div key={b.bill_key} className="rounded-md border p-3 text-sm space-y-1">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-medium">{b.invoice_no || "Bill"}</span>
+                    <span className="font-medium">{inr(paise(b.total))}</span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {when(b.billed_at)} | {b.customer_name || "Walk-in"} | {b.payment_method || "unknown"}
+                  </p>
+                  <p>
+                    Reason: {b.void_reason || "-"}
+                    {b.voided_at ? ` | cancelled ${when(b.voided_at)}` : ""}
+                  </p>
+                </div>
+              ))}
+            </section>
+          )}
         </>
       )}
     </div>
