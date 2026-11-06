@@ -22,6 +22,7 @@ import WastageLogView from "@/components/WastageLogView";
 import BookingsView from "@/components/BookingsView";
 import BillAlertsView from "@/components/BillAlertsView";
 import BillDeskView from "@/components/BillDeskView";
+import ActivityLogView from "@/components/ActivityLogView";
 import ItemProfitView from "@/components/ItemProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
@@ -59,6 +60,7 @@ const TABS = [
   { id: "report", label: "Sales report" },
   { id: "billdesk", label: "Bill desk" },
   { id: "alerts", label: "Bill alerts" },
+  { id: "activity", label: "Activity log" },
   { id: "itemprofit", label: "Item profit" },
   { id: "rush", label: "Rush hours" },
   { id: "health", label: "Health check" },
@@ -296,6 +298,7 @@ export default function ExciseTabsView() {
       {current === "report" && <ExciseSalesReportView />}
       {current === "billdesk" && <BillDeskView />}
       {current === "alerts" && <BillAlertsView />}
+      {current === "activity" && <ActivityLogView />}
       {current === "itemprofit" && <ItemProfitView />}
       {current === "rush" && <RushHoursView />}
       {current === "health" && <ExciseHealthCheckView />}
