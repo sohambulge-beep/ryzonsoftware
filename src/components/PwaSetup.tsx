@@ -1,6 +1,7 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import StorageGuard from "./StorageGuard";
 import ActivityWatcher from "./ActivityWatcher";
+import LoginGate from "./LoginGate";
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -100,6 +101,7 @@ export default function PwaSetup() {
       </Guard>
       <StorageGuard />
       <ActivityWatcher />
+      <LoginGate />
     </>
   );
 }
