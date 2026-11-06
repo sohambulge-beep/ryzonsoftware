@@ -1,8 +1,11 @@
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadState } from "../data";
 import { getCloudClient } from "../lib/adminCheck";
+import { readVoidLog } from "../lib/voidLog";
 
 const MAP_PREFIX = "pt_bill_sync_map:";
+const VOID_SENT_PREFIX = "pt_bill_void_sent:";
 const LOCK_KEY = "pt_bill_sync_lock";
 const BATCH = 40;
 const FIRST_MS = 15000;
@@ -11,6 +14,7 @@ const ONLINE_DELAY_MS = 3000;
 const MAX_BACKOFF_MS = 30 * 60 * 1000;
 const MAX_BILL_CHARS = 200000;
 const OK_SHOW_MS = 8000;
+const MAX_VOID_SENT = 3000;
 
 type SyncMap = Record<string, string>;
 type Status = "idle" | "syncing" | "failed";
@@ -94,6 +98,52 @@ function writeMap(uid: string, map: SyncMap) {
   }
 }
 
+// The cancelled bills the cloud already knows about, per signed-in user.
+function readSent(uid: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(VOID_SENT_PREFIX + uid);
+    const p = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(p) ? p.filter((x: any) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSent(uid: string, sent: Set<string>) {
+  try {
+    const arr = Array.from(sent);
+    localStorage.setItem(
+      VOID_SENT_PREFIX + uid,
+      JSON.stringify(arr.length > MAX_VOID_SENT ? arr.slice(arr.length - MAX_VOID_SENT) : arr)
+    );
+  } catch {
+    // ignore
+  }
+}
+
+// Marks the bills cancelled on this phone as cancelled in the cloud (matched by the bill's own id).
+async function sendVoids(c: SupabaseClient, uid: string) {
+  const sent = readSent(uid);
+  const todo = readVoidLog()
+    .filter((v) => !sent.has(v.id))
+    .slice(0, 50);
+  for (const v of todo) {
+    const when = new Date(v.at);
+    const { error } = await c
+      .from("pos_bills")
+      .update({
+        voided: true,
+        void_reason: v.reason.slice(0, 200),
+        voided_at: Number.isNaN(when.getTime()) ? new Date().toISOString() : when.toISOString(),
+      })
+      .eq("user_id", uid)
+      .eq("data->>id", v.id);
+    if (error) throw new Error(error.message);
+    sent.add(v.id);
+    writeSent(uid, sent);
+  }
+}
+
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
   static getDerivedStateFromError() {
@@ -149,44 +199,45 @@ function Inner() {
 
       const map = readMap(uid);
       const todo = prepared.filter((p) => map[p.key] !== p.hash);
-      if (todo.length === 0) {
-        const keep = new Set(prepared.map((p) => p.key));
+      const keep = new Set(prepared.map((p) => p.key));
+
+      if (todo.length > 0) {
+        setPending(todo.length);
+        setStatus("syncing");
+        setMessage("");
+
+        let done = 0;
+        for (let i = 0; i < todo.length; i += BATCH) {
+          const batch = todo.slice(i, i + BATCH);
+          const rows = batch.map((p) => ({ ...p.row, user_id: uid }));
+          const { error } = await c.from("pos_bills").upsert(rows, { onConflict: "user_id,bill_key" });
+          if (error) throw new Error(error.message);
+          for (const p of batch) map[p.key] = p.hash;
+          writeMap(uid, map);
+          done += batch.length;
+          setPending(todo.length - done);
+          localStorage.setItem(LOCK_KEY, String(Date.now()));
+        }
+
+        for (const k of Object.keys(map)) if (!keep.has(k)) delete map[k];
+        writeMap(uid, map);
+        setSaved(prepared.length);
+        setPending(0);
+        setOkVisible(true);
+        if (okTimerRef.current) clearTimeout(okTimerRef.current);
+        okTimerRef.current = setTimeout(() => setOkVisible(false), OK_SHOW_MS);
+      } else {
         for (const k of Object.keys(map)) if (!keep.has(k)) delete map[k];
         writeMap(uid, map);
         setPending(0);
-        setStatus((prev) => (prev === "idle" ? prev : "idle"));
-        return;
       }
 
-      setPending(todo.length);
-      setStatus("syncing");
-      setMessage("");
-
-      let done = 0;
-      for (let i = 0; i < todo.length; i += BATCH) {
-        const batch = todo.slice(i, i + BATCH);
-        const rows = batch.map((p) => ({ ...p.row, user_id: uid }));
-        const { error } = await c.from("pos_bills").upsert(rows, { onConflict: "user_id,bill_key" });
-        if (error) throw new Error(error.message);
-        for (const p of batch) map[p.key] = p.hash;
-        writeMap(uid, map);
-        done += batch.length;
-        setPending(todo.length - done);
-        localStorage.setItem(LOCK_KEY, String(Date.now()));
-      }
-
-      const keep = new Set(prepared.map((p) => p.key));
-      for (const k of Object.keys(map)) if (!keep.has(k)) delete map[k];
-      writeMap(uid, map);
+      // Bills first, then the "cancelled" marks, so a problem with the marks never holds back the bills.
+      await sendVoids(c, uid);
 
       failuresRef.current = 0;
       nextAllowedRef.current = 0;
-      setSaved(prepared.length);
-      setPending(0);
       setStatus("idle");
-      setOkVisible(true);
-      if (okTimerRef.current) clearTimeout(okTimerRef.current);
-      okTimerRef.current = setTimeout(() => setOkVisible(false), OK_SHOW_MS);
     } catch (e: any) {
       failuresRef.current += 1;
       const wait = Math.min(MAX_BACKOFF_MS, 60000 * 2 ** (failuresRef.current - 1));
