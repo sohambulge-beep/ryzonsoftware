@@ -23,6 +23,7 @@ import BookingsView from "@/components/BookingsView";
 import BillAlertsView from "@/components/BillAlertsView";
 import BillDeskView from "@/components/BillDeskView";
 import ActivityLogView from "@/components/ActivityLogView";
+import HelpView from "@/components/HelpView";
 import ItemProfitView from "@/components/ItemProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
@@ -35,6 +36,7 @@ import EventMergeView from "@/components/EventMergeView";
 import SyncReviewView from "@/components/SyncReviewView";
 import CloudBackupView from "@/components/CloudBackupView";
 import PosReportView from "@/components/PosReportView";
+import AdminOverviewView from "@/components/AdminOverviewView";
 import AdminPanelView from "@/components/AdminPanelView";
 import AdminCustomerDataView from "@/components/AdminCustomerDataView";
 import AdminBillsView from "@/components/AdminBillsView";
@@ -74,6 +76,7 @@ const TABS = [
   { id: "counter", label: "Liquor counter" },
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
+  { id: "help", label: "Help" },
   { id: "offlinequeue", label: "Offline queue" },
   { id: "merge", label: "Two-phone merge" },
   { id: "syncreview", label: "Sync review" },
@@ -82,6 +85,7 @@ const TABS = [
 ] as const;
 
 const ADMIN_TABS = [
+  { id: "overview", label: "Overview" },
   { id: "admin", label: "Admin" },
   { id: "custdata", label: "Customer data" },
   { id: "cloudbills", label: "Cloud bills" },
@@ -105,6 +109,7 @@ const STAFF_TABS: TabId[] = [
   "bookings",
   "udhaar",
   "order",
+  "help",
   "offlinequeue",
 ];
 const FALLBACK_TAB: TabId = "sales";
@@ -114,7 +119,7 @@ const HIDDEN_KEY = "pt_excise_hidden_tabs";
 const MAX_RECENT = 30;
 
 const isAdminTab = (id: TabId) =>
-  id === "admin" || id === "custdata" || id === "cloudbills" || id === "cloudstock";
+  id === "overview" || id === "admin" || id === "custdata" || id === "cloudbills" || id === "cloudstock";
 const labelOf = (id: TabId) => ALL_TABS.find((t) => t.id === id)?.label ?? id;
 
 // Reads a saved list of tab ids and drops anything unknown or repeated.
@@ -312,11 +317,13 @@ export default function ExciseTabsView() {
       {current === "counter" && <ExciseCounterView />}
       {current === "order" && <ExciseOrderView />}
       {current === "account" && <CustomerLoginView />}
+      {current === "help" && <HelpView />}
       {current === "offlinequeue" && <OfflineQueueView />}
       {current === "merge" && <EventMergeView />}
       {current === "syncreview" && <SyncReviewView />}
       {current === "cloud" && <CloudBackupView />}
       {current === "posreport" && <PosReportView />}
+      {current === "overview" && isAdmin && <AdminOverviewView />}
       {current === "admin" && isAdmin && <AdminPanelView />}
       {current === "custdata" && isAdmin && <AdminCustomerDataView />}
       {current === "cloudbills" && isAdmin && <AdminBillsView />}
