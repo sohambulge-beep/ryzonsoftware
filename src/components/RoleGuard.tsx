@@ -111,8 +111,11 @@ export function canAccessModule(role: AppRole, permissions: PermissionKey[], mod
   return role === "owner" || permissions.includes(module as PermissionKey);
 }
 
-/** Ye views permission-list ke bahar hain — sabko dikhte hain. */
-const ALWAYS_ALLOWED = ["dashboard", "settings", "owner", "profitloss", "tableskot", "excise"];
+/**
+ * Ye views har role ko dikhte hain. Owner Dashboard, Profit & Loss, Settings aur Bank ab
+ * is list me nahi hain: inhe sirf owner dekhta hai (ya jise permission di gayi ho).
+ */
+const ALWAYS_ALLOWED = ["dashboard", "tableskot", "excise"];
 
 /** Sidebar ke items ko role ke hisaab se filter karta hai. */
 export function filterItemsForRole<T extends { id: string }>(
