@@ -24,6 +24,7 @@ import BillAlertsView from "@/components/BillAlertsView";
 import BillDeskView from "@/components/BillDeskView";
 import ActivityLogView from "@/components/ActivityLogView";
 import HelpView from "@/components/HelpView";
+import SetupCheckView from "@/components/SetupCheckView";
 import ItemProfitView from "@/components/ItemProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
@@ -77,6 +78,7 @@ const TABS = [
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
   { id: "help", label: "Help" },
+  { id: "setupcheck", label: "Setup check" },
   { id: "offlinequeue", label: "Offline queue" },
   { id: "merge", label: "Two-phone merge" },
   { id: "syncreview", label: "Sync review" },
@@ -318,6 +320,7 @@ export default function ExciseTabsView() {
       {current === "order" && <ExciseOrderView />}
       {current === "account" && <CustomerLoginView />}
       {current === "help" && <HelpView />}
+      {current === "setupcheck" && <SetupCheckView />}
       {current === "offlinequeue" && <OfflineQueueView />}
       {current === "merge" && <EventMergeView />}
       {current === "syncreview" && <SyncReviewView />}
