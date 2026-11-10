@@ -3,6 +3,7 @@ import StorageGuard from "./StorageGuard";
 import ActivityWatcher from "./ActivityWatcher";
 import LoginGate from "./LoginGate";
 import PresencePing from "./PresencePing";
+import PlanSync from "./PlanSync";
 
 class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -103,6 +104,7 @@ export default function PwaSetup() {
       <StorageGuard />
       <ActivityWatcher />
       <PresencePing />
+      <PlanSync />
       <LoginGate />
     </>
   );
