@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { SHOW_GOOGLE_LOGIN } from "@/lib/authConfig";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -37,6 +38,8 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [showGoogle, setShowGoogle] = useState(SHOW_GOOGLE_LOGIN);
+  const [hasGateLogin, setHasGateLogin] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -47,6 +50,23 @@ function AuthPage() {
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
+
+  // The Google button stays hidden unless the link has ?google=1. The TapTrack username login is detected too.
+  useEffect(() => {
+    try {
+      if (window.location.search.includes("google=1")) setShowGoogle(true);
+    } catch {
+      // ignore
+    }
+    try {
+      const raw = localStorage.getItem("pt-cloud-backup-auth");
+      const p = raw ? JSON.parse(raw) : null;
+      const id = p?.user?.id ?? p?.currentSession?.user?.id;
+      setHasGateLogin(typeof id === "string" && id !== "");
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const reset = () => {
     setError("");
@@ -120,6 +140,13 @@ function AuthPage() {
         </div>
 
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6">
+          {mode !== "forgot" && hasGateLogin && (
+            <p className="text-xs text-zinc-300 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 mb-4">
+              You are signed in with your TapTrack username. Now sign in (or sign up once) with your email to open your
+              bar&apos;s data. Use the same email and password every time.
+            </p>
+          )}
+
           {mode !== "forgot" && (
             <div className="grid grid-cols-2 gap-1 bg-zinc-950 border border-zinc-800 rounded-lg p-1 mb-5">
               <button
@@ -153,7 +180,7 @@ function AuthPage() {
               <>
                 <div>
                   <label className="text-xs text-zinc-400" htmlFor="fullName">Your name</label>
-                  <input id="fullName" className={inputCls} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Rishi Sharma" required />
+                  <input id="fullName" className={inputCls} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-400" htmlFor="barName">Bar name (optional)</label>
@@ -194,7 +221,7 @@ function AuthPage() {
             </button>
           </form>
 
-          {mode !== "forgot" && (
+          {mode !== "forgot" && showGoogle && (
             <>
               <div className="flex items-center gap-3 my-4">
                 <div className="h-px flex-1 bg-zinc-800" />
