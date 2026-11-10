@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { persistPlan, readPersistedPlan, type PlanId } from "@/lib/plan";
+import { readPersistedPlan, type PlanId } from "@/lib/plan";
+import { PROVIDER_PHONE } from "@/lib/providerConfig";
 
 interface PricingPlan {
   id: PlanId;
@@ -84,7 +85,6 @@ export const Route = createFileRoute("/_authenticated/pricing")({
 });
 
 function PricingPage() {
-  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [activePlan, setActivePlan] = useState<PlanId | null>(null);
 
@@ -92,10 +92,19 @@ function PricingPage() {
     setActivePlan(readPersistedPlan());
   }, []);
 
-  const choosePlan = (plan: PlanId) => {
-    persistPlan(plan);
-    setActivePlan(plan);
-    void navigate({ to: "/" });
+  // The plan is set by the provider. A customer asks for a change on WhatsApp.
+  const askForPlan = (name: string) => {
+    const digits = PROVIDER_PHONE.replace(/\D/g, "");
+    const text = `Hello, I want to switch my Prime Terminal plan to ${name}.`;
+    try {
+      window.open(
+        `https://wa.me/${digits.length >= 10 ? digits : ""}?text=${encodeURIComponent(text)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -129,6 +138,9 @@ function PricingPage() {
         </h1>
         <p className="text-zinc-400 max-w-2xl mx-auto text-base md:text-lg">
           Pick the plan that fits your bar. Upgrade or downgrade anytime as your business grows.
+        </p>
+        <p className="text-zinc-500 max-w-2xl mx-auto text-sm mt-2">
+          Your plan is set by your provider. To change it, tap the button on a plan and message us on WhatsApp.
         </p>
         <div className="mt-7 inline-flex items-center rounded-lg border border-zinc-700 bg-zinc-900 p-1" aria-label="Billing cycle">
           <button
@@ -197,16 +209,17 @@ function PricingPage() {
 
               <button
                 type="button"
-                onClick={() => choosePlan(plan.id)}
+                disabled={activePlan === plan.id}
+                onClick={() => askForPlan(plan.name)}
                 className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
                   activePlan === plan.id
-                    ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                    ? "bg-emerald-600 text-white cursor-default"
                     : plan.highlighted
                     ? "bg-gradient-to-r from-amber-400 to-amber-600 text-zinc-950 hover:brightness-110"
                     : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
                 }`}
               >
-                {activePlan === plan.id ? "Current Plan" : "Choose Plan"}
+                {activePlan === plan.id ? "Current Plan" : "Ask on WhatsApp"}
               </button>
             </div>
           ))}
