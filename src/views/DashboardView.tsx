@@ -55,20 +55,20 @@ export function DashboardView() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="pt-dash space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map(k => (
-          <div key={k.label} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 relative overflow-hidden">
-            <div className="text-xs font-mono text-zinc-400 uppercase">{k.label}</div>
-            <div className={`text-2xl font-bold mt-1 font-mono ${k.class}`}>{k.value}</div>
-            <div className="text-xs text-zinc-500 mt-1 flex items-center gap-1">{k.sub}</div>
+          <div key={k.label} className="pt-glass bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 relative overflow-hidden">
+            <div className="pt-kpi-label text-xs font-mono text-zinc-400 uppercase">{k.label}</div>
+            <div className={`pt-kpi-val text-2xl font-bold mt-1 font-mono ${k.class}`}>{k.value}</div>
+            <div className="pt-kpi-sub text-xs text-zinc-500 mt-1 flex items-center gap-1">{k.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Smart Alerts Panel */}
       {alertsEnabled && alerts.length > 0 && (
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
+        <div className="pt-glass pt-panel bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-bell text-amber-400" />
@@ -107,7 +107,7 @@ export function DashboardView() {
 
       {/* Business Insights Summary */}
       {insightsEnabled && insights.hasData && (
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
+        <div className="pt-glass pt-panel bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-lightbulb text-amber-400" />
@@ -164,7 +164,7 @@ export function DashboardView() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span className="pt-dot w-2.5 h-2.5 rounded-full bg-amber-500" />
             <h2 className="text-base font-bold text-white">Live Tap Lines & Keg Capacities</h2>
           </div>
           <button onClick={() => navigate('inventory')} className="text-xs text-amber-400 hover:underline">Manage All Kegs &rarr;</button>
@@ -175,7 +175,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
+        <div className="pt-glass pt-panel lg:col-span-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm text-zinc-200 flex items-center gap-2">
               <i className="fa-solid fa-chart-area text-amber-400" /> {financialsEnabled ? 'Sales vs Expenses Overview' : 'Sales Overview'}
@@ -189,7 +189,7 @@ export function DashboardView() {
           </div>
         </div>
 
-        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 flex flex-col">
+        <div className="pt-glass pt-panel bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 flex flex-col">
           <h3 className="font-bold text-sm text-zinc-200 mb-3 flex items-center gap-2">
             <i className="fa-solid fa-clock-rotate-left text-amber-400" /> Recent Sales
           </h3>
