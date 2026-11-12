@@ -4,6 +4,7 @@ import { getStorageInfo, loadState } from "@/data";
 import { getFailed, getQueue } from "@/lib/offlineQueue";
 import { PROVIDER_PHONE } from "@/lib/providerConfig";
 import { useOwnerAccess } from "@/lib/ownerAccess";
+import { buildExciseBankExport, type TableReport } from "@/lib/dataExport";
 
 const input = "rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
@@ -12,6 +13,24 @@ const LIMIT_CHARS = 5000000;
 
 const stamp = (ms: number) =>
   new Date(ms).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+const dayStamp = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// Hands a file to the phone's download.
+function saveFile(name: string, text: string, type: string) {
+  const blob = new Blob([text], { type });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
+}
 
 function lsGet(key: string): string {
   try {
@@ -101,6 +120,8 @@ function Inner() {
   const [problem, setProblem] = useState("");
   const [details, setDetails] = useState("");
   const [msg, setMsg] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [reports, setReports] = useState<TableReport[]>([]);
 
   const counts = {
     bills: Array.isArray(db.invoices) ? db.invoices.length : 0,
@@ -130,21 +151,34 @@ function Inner() {
 
   function onDownload() {
     try {
-      const d = new Date();
-      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const blob = new Blob([JSON.stringify(loadState(), null, 2)], { type: "application/json" });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = `prime-terminal-my-data-${day}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(href), 1000);
+      saveFile(`prime-terminal-my-data-${dayStamp()}.json`, JSON.stringify(loadState(), null, 2), "application/json");
       setMsg("Your data file was downloaded.");
     } catch {
       setMsg("The download did not work here.");
     }
+  }
+
+  async function onExportExcise() {
+    if (!isOwner) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setMsg("Internet is needed to download the Excise and Bank data.");
+      return;
+    }
+    setExporting(true);
+    setMsg("");
+    try {
+      const res = await buildExciseBankExport();
+      setReports(res.reports);
+      if (res.total === 0 && res.reports.every((r) => r.note !== "")) {
+        setMsg("Nothing could be read. Check your internet and sign in again, then try again.");
+      } else {
+        saveFile(`prime-terminal-excise-bank-${dayStamp()}.json`, res.text, "application/json");
+        setMsg(`Excise and Bank data downloaded: ${res.total} rows. Keep the file safe.`);
+      }
+    } catch (e: any) {
+      setMsg(`The export failed: ${e?.message ?? e}`);
+    }
+    setExporting(false);
   }
 
   return (
@@ -194,12 +228,34 @@ function Inner() {
       {tooLong && <p className="text-xs text-muted-foreground">The message is too long for WhatsApp. Use Copy.</p>}
 
       {isOwner && (
-        <section className="space-y-2 rounded-md border p-3 text-sm">
+        <section className="space-y-3 rounded-md border p-3 text-sm">
           <p className="font-medium">Your data</p>
-          <p className="text-muted-foreground">Download all the POS data on this phone as one file (a safe copy).</p>
-          <button className="underline" onClick={onDownload}>
-            Download my data
-          </button>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">
+              POS data: download all the POS data on this phone as one file (a safe copy).
+            </p>
+            <button className="underline" onClick={onDownload}>
+              Download my data
+            </button>
+          </div>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">
+              Excise and Bank data: brands, TP receipts, daily sales and bank entries as one file. It has private
+              business data, so keep it safe. Needs internet.
+            </p>
+            <button className="underline" disabled={exporting} onClick={onExportExcise}>
+              {exporting ? "Downloading..." : "Download Excise & Bank data"}
+            </button>
+          </div>
+          {reports.length > 0 && (
+            <div className="space-y-1">
+              {reports.map((r) => (
+                <p key={r.table} className={r.note ? "text-destructive" : "text-muted-foreground"}>
+                  {r.table}: {r.rows} row(s){r.note ? ` | ${r.note}` : ""}
+                </p>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>
