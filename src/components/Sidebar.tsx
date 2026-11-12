@@ -101,6 +101,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const [guideHidden, setGuideHidden] = useState(true);
   const [backupDone, setBackupDone] = useState(false);
 
+  // Settings & Plan is for the owner (or someone the owner gave the permission to).
+  const permissionList: string[] = permissions;
+  const canSettings = roleLoading || role === 'owner' || permissionList.includes('settings');
+
   useEffect(() => {
     const update = () => {
       setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -178,7 +182,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       if (!feature || hasFeature(feature)) allowedIds.add(item.id);
     }
   }
-  allowedIds.add('settings');
+  if (canSettings) allowedIds.add('settings');
 
   const recentItems = recents
     .filter(id => id !== currentView && id !== 'dashboard' && allowedIds.has(id) && ITEM_LOOKUP.has(id))
@@ -386,16 +390,18 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               Account
             </div>
             <nav className="space-y-1">
-              <button
-                type="button"
-                onClick={() => { navigate('settings'); onClose(); }}
-                className={`nav-link w-full flex items-center gap-x-3 px-3.5 py-3.5 rounded-lg text-sm cursor-pointer transition-colors duration-150 touch-manipulation text-left ${
-                  currentView === 'settings' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-300 hover:bg-zinc-800 active:bg-zinc-800'
-                }`}
-              >
-                <i className={`fa-solid fa-gear w-5 text-center ${currentView === 'settings' ? 'text-zinc-950' : 'text-zinc-400'}`} />
-                <span className="flex-1">Settings & Plan</span>
-              </button>
+              {canSettings && (
+                <button
+                  type="button"
+                  onClick={() => { navigate('settings'); onClose(); }}
+                  className={`nav-link w-full flex items-center gap-x-3 px-3.5 py-3.5 rounded-lg text-sm cursor-pointer transition-colors duration-150 touch-manipulation text-left ${
+                    currentView === 'settings' ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-300 hover:bg-zinc-800 active:bg-zinc-800'
+                  }`}
+                >
+                  <i className={`fa-solid fa-gear w-5 text-center ${currentView === 'settings' ? 'text-zinc-950' : 'text-zinc-400'}`} />
+                  <span className="flex-1">Settings & Plan</span>
+                </button>
+              )}
               <Link
                 to="/pricing"
                 className="nav-link w-full flex items-center gap-x-3 px-3.5 py-3.5 rounded-lg text-sm cursor-pointer transition-colors duration-150 touch-manipulation text-left text-zinc-300 hover:bg-zinc-800 active:bg-zinc-800"
