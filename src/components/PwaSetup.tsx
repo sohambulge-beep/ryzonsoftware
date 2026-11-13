@@ -1,6 +1,7 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import StorageGuard from "./StorageGuard";
 import ActivityWatcher from "./ActivityWatcher";
+import CounterTakingsWatcher from "./CounterTakingsWatcher";
 import LoginGate from "./LoginGate";
 import PresencePing from "./PresencePing";
 import PlanSync from "./PlanSync";
@@ -134,6 +135,7 @@ export default function PwaSetup() {
       </Guard>
       <StorageGuard />
       <ActivityWatcher />
+      <CounterTakingsWatcher />
       <PresencePing />
       <PlanSync />
       <LoginGate />
