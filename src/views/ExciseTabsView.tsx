@@ -25,6 +25,7 @@ import BillDeskView from "@/components/BillDeskView";
 import ActivityLogView from "@/components/ActivityLogView";
 import HelpView from "@/components/HelpView";
 import SetupCheckView from "@/components/SetupCheckView";
+import CounterTakingsView from "@/components/CounterTakingsView";
 import ItemProfitView from "@/components/ItemProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
@@ -75,6 +76,7 @@ const TABS = [
   { id: "club", label: "Customer club" },
   { id: "bookings", label: "Bookings" },
   { id: "counter", label: "Liquor counter" },
+  { id: "takings", label: "Counter takings" },
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
   { id: "help", label: "Help" },
@@ -317,6 +319,7 @@ export default function ExciseTabsView() {
       {current === "club" && <CustomerClubView />}
       {current === "bookings" && <BookingsView />}
       {current === "counter" && <ExciseCounterView />}
+      {current === "takings" && <CounterTakingsView />}
       {current === "order" && <ExciseOrderView />}
       {current === "account" && <CustomerLoginView />}
       {current === "help" && <HelpView />}
