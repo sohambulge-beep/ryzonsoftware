@@ -60,6 +60,12 @@ interface SlipLine {
   unitP: number;
   amountP: number;
 }
+// What is needed to cancel a sale: the Daily sales rows it made and the open bottle ml before and after it.
+interface SlipUndo {
+  rowCount: number;
+  rowIds: string[];
+  brands: { brandId: string; name: string; openBefore: number; openAfter: number }[];
+}
 interface Slip {
   no: string;
   when: string;
@@ -67,6 +73,8 @@ interface Slip {
   customer: string;
   lines: SlipLine[];
   totalP: number;
+  undo?: SlipUndo;
+  cancelled?: boolean;
 }
 interface CartLine {
   brandId: string;
@@ -126,7 +134,12 @@ function isSlip(x: any): x is Slip {
         typeof l.qty === "number" &&
         typeof l.unitP === "number" &&
         typeof l.amountP === "number"
-    )
+    ) &&
+    (x.undo === undefined ||
+      (x.undo &&
+        typeof x.undo.rowCount === "number" &&
+        Array.isArray(x.undo.rowIds) &&
+        Array.isArray(x.undo.brands)))
   );
 }
 
@@ -150,6 +163,7 @@ function nextSlipNo(date: string): string {
 
 function slipText(slip: Slip, hotel: string): string {
   const out: string[] = [];
+  if (slip.cancelled) out.push("*** CANCELLED ***");
   out.push(`*${hotel || "Counter slip"}*`);
   out.push(`Slip ${slip.no} | ${slip.when}`);
   if (slip.customer) out.push(`Customer: ${slip.customer}`);
@@ -554,9 +568,11 @@ export default function ExciseCounterView() {
       const rows = plans
         .filter((p) => p.record > 0)
         .map((p) => ({ brand_id: p.brandId, sale_date: date, bottles: p.record }));
+      let rowIds: string[] = [];
       if (rows.length > 0) {
-        const { error } = await db.from("excise_daily_sales").insert(rows);
+        const { data, error } = await db.from("excise_daily_sales").insert(rows).select("id");
         if (error) throw new Error(error.message);
+        rowIds = Array.isArray(data) ? data.map((d: any) => String(d?.id ?? "")).filter(Boolean) : [];
       }
 
       // Only after that the ml left in the open bottles is updated.
@@ -586,6 +602,13 @@ export default function ExciseCounterView() {
         customer: customer.trim(),
         lines: slipLines,
         totalP: slipLines.reduce((s, l) => s + l.amountP, 0),
+        undo: {
+          rowCount: rows.length,
+          rowIds,
+          brands: plans
+            .filter((p) => p.pegMl > 0)
+            .map((p) => ({ brandId: p.brandId, name: p.name, openBefore: p.openBefore, openAfter: p.openAfter })),
+        },
       };
       setSlip(newSlip);
       setRecent((prev) => {
@@ -607,6 +630,79 @@ export default function ExciseCounterView() {
       await load();
     } catch (e: any) {
       setMsg(`Could not save: ${e.message ?? e}. Nothing was saved.`);
+    }
+    setBusy(false);
+  }
+
+  // Marks one slip as cancelled, in the list and on the screen.
+  function markCancelled(no: string, when: string) {
+    const mark = (x: Slip): Slip => (x.no === no && x.when === when ? { ...x, cancelled: true } : x);
+    setRecent((prev) => {
+      const next = prev.map(mark);
+      try {
+        localStorage.setItem(SLIPS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    setSlip((prev) => (prev ? mark(prev) : prev));
+  }
+
+  async function onCancelSale(s: Slip) {
+    if (!isOwner || busy) return;
+    if (s.cancelled) return;
+    const u = s.undo;
+    if (!u) {
+      setMsg("This slip is from before the cancel feature. Remove its entries from the Daily sales tab.");
+      return;
+    }
+    if (u.rowIds.length !== u.rowCount) {
+      setMsg("The entries of this sale are not known (it was saved without internet). Remove them from the Daily sales tab.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setMsg("Internet is needed to cancel a sale.");
+      return;
+    }
+    // If another sale used the same open bottle after this one, giving the ml back now would be wrong.
+    const blocked = u.brands.find((b) => (openMap[b.brandId] ?? 0) !== b.openAfter);
+    if (blocked) {
+      setMsg(
+        `Another sale used the open ${blocked.name} bottle after this slip. Cancel the later sale first, or fix the ml under Prices.`
+      );
+      return;
+    }
+    if (!confirm(`Cancel slip ${s.no} (${inr(s.totalP)})? The bottles go back to stock and the open bottle ml is restored.`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      if (u.rowIds.length > 0) {
+        const res: any = await db.from("excise_daily_sales").delete().in("id", u.rowIds).select("id");
+        if (res.error) throw new Error(res.error.message);
+        const removed = Array.isArray(res.data) ? res.data.length : 0;
+        if (removed !== u.rowIds.length) {
+          throw new Error(
+            `only ${removed} of ${u.rowIds.length} entries could be removed. Check the Daily sales tab. The slip was not marked as cancelled`
+          );
+        }
+      }
+      const nextOpen: OpenMap = { ...openMap };
+      for (const b of u.brands) {
+        if (b.openBefore > 0) nextOpen[b.brandId] = b.openBefore;
+        else delete nextOpen[b.brandId];
+      }
+      setOpenMap(nextOpen);
+      const ledgerSaved = writeOpen(nextOpen);
+      markCancelled(s.no, s.when);
+      setMsg(
+        `Sale ${s.no} cancelled. The bottles are back in stock.` +
+          (ledgerSaved ? "" : " Warning: the open bottle ml could not be saved on this phone. Set it again under Prices.")
+      );
+      await load();
+    } catch (e: any) {
+      setMsg(`Could not cancel: ${e.message ?? e}.`);
     }
     setBusy(false);
   }
@@ -637,7 +733,8 @@ export default function ExciseCounterView() {
         more than what is left in the open bottle, so stock, registers and reports keep working in bottles. Do not
         enter the same bottles again in Daily sales or Bulk sales. The slip is a counter slip, not a tax invoice, and
         is kept on this phone only (last {MAX_SLIPS}). Peg prices and open bottle ml are also kept on this phone, so
-        use one phone for the counter. Ask your CA how pegs must be written in your state's excise register.
+        use one phone for the counter. A wrong sale can be cancelled by the owner from its slip, as long as no later
+        sale used the same open bottle. Ask your CA how pegs must be written in your state's excise register.
       </p>
 
       {isOwner && (
@@ -886,6 +983,7 @@ export default function ExciseCounterView() {
       {slip && (
         <section className="space-y-3">
           <div id="counter-slip" className="rounded-md border p-4 text-sm space-y-2">
+            {slip.cancelled && <p className="text-base font-bold text-destructive">*** CANCELLED ***</p>}
             <p className="text-base font-semibold">{hotel || "Counter slip"}</p>
             {settings?.licence_no && <p>Licence no.: {settings.licence_no}</p>}
             <p>
@@ -937,6 +1035,11 @@ export default function ExciseCounterView() {
             <button className={btn} onClick={onCopy}>
               Copy slip
             </button>
+            {isOwner && !slip.cancelled && (
+              <button className="underline text-sm text-destructive" disabled={busy} onClick={() => onCancelSale(slip)}>
+                Cancel this sale
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -948,6 +1051,7 @@ export default function ExciseCounterView() {
             <div key={s.no + s.when} className="flex items-center justify-between rounded-md border p-3 text-sm">
               <span>
                 {s.no} | {s.when} | {inr(s.totalP)} | {s.mode}
+                {s.cancelled ? " | CANCELLED" : ""}
               </span>
               <button className="underline" onClick={() => setSlip(s)}>
                 Show
