@@ -1,8 +1,11 @@
-import { Component, useCallback, useEffect, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getCloudClient } from "@/lib/adminCheck";
+import { listExciseBrands, type ExciseBrand } from "@/lib/exciseService";
 
 const CFG_KEY = "taptrack_peg_cfg";
+const DEFAULT_SIZES = [30, 60];
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
+const input = "rounded-md border px-3 py-2 text-sm bg-background";
 
 interface Cfg {
   sizes: number[];
@@ -34,7 +37,7 @@ function cleanCfg(p: any): Cfg | null {
     }
   }
   if (sizes.length === 0 && Object.keys(prices).length === 0) return null;
-  return { sizes: sizes.length > 0 ? sizes : [30, 60], prices };
+  return { sizes: sizes.length > 0 ? sizes : DEFAULT_SIZES, prices };
 }
 
 function readLocal(): Cfg | null {
@@ -46,6 +49,15 @@ function readLocal(): Cfg | null {
   }
 }
 
+function writeLocal(cfg: Cfg): boolean {
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const summary = (c: Cfg) => `${c.sizes.join(", ")} ml pegs, prices for ${Object.keys(c.prices).length} brand(s)`;
 
 const stampOf = (iso: string) => {
@@ -54,6 +66,15 @@ const stampOf = (iso: string) => {
     ? "-"
     : d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
+
+// Price of one peg: the bottle rate in proportion to the peg size, times a multiplier, rounded to a step.
+// Null when it cannot be worked out (no rate, no bottle size, or a peg bigger than the bottle).
+function pegPrice(rate: number, size: number, ml: number, mult: number, step: number): number | null {
+  if (!(rate > 0) || !(size > 0) || ml > size) return null;
+  const raw = (rate * ml * mult) / size;
+  const p = Math.round(raw / step) * step;
+  return p > 0 ? p : step;
+}
 
 // Every cloud call has its own time limit, so a slow answer never freezes the screen.
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
@@ -85,6 +106,10 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 function Inner() {
   const [local, setLocal] = useState<Cfg | null>(null);
   const [cloud, setCloud] = useState<CloudState>({ kind: "unknown" });
+  const [brands, setBrands] = useState<ExciseBrand[]>([]);
+  const [mult, setMult] = useState("3");
+  const [step, setStep] = useState("5");
+  const [overwrite, setOverwrite] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -133,7 +158,31 @@ function Inner() {
   useEffect(() => {
     setLocal(readLocal());
     checkCloud();
+    listExciseBrands()
+      .then(setBrands)
+      .catch(() => {
+        // the rule below then shows no brands; the rest still works
+      });
   }, [checkCloud]);
+
+  // Four example brands with the prices the rule would give.
+  const preview = useMemo(() => {
+    const m = Number(mult);
+    const st = Number(step);
+    if (!(m >= 0.5 && m <= 20) || ![1, 5, 10].includes(st)) return [];
+    const sizes = local ? local.sizes : DEFAULT_SIZES;
+    const out: string[] = [];
+    for (const b of brands) {
+      if (out.length >= 4) break;
+      const parts: string[] = [];
+      for (const ml of sizes) {
+        const p = pegPrice(Number(b.rate) || 0, b.size_ml, ml, m, st);
+        if (p !== null) parts.push(`${ml} ml = ${p}`);
+      }
+      if (parts.length > 0) out.push(`${b.name} ${b.size_ml} ml: ${parts.join(", ")}`);
+    }
+    return out;
+  }, [brands, mult, step, local]);
 
   async function onSend() {
     const cfg = readLocal();
@@ -201,11 +250,7 @@ function Inner() {
         return;
       }
       if (!confirm(`Replace the peg sizes and prices on this phone with the cloud copy (${summary(cfg)})?`)) return;
-      try {
-        localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-      } catch {
-        throw new Error("could not save on this phone (storage is blocked)");
-      }
+      if (!writeLocal(cfg)) throw new Error("could not save on this phone (storage is blocked)");
       setLocal(cfg);
       setMsg("Peg prices loaded. Open the Liquor counter tab again to use them.");
     } catch (e: any) {
@@ -215,37 +260,147 @@ function Inner() {
     }
   }
 
+  function onApplyRule() {
+    const m = Number(mult);
+    const st = Number(step);
+    if (!(m >= 0.5 && m <= 20)) {
+      setMsg("The multiplier must be a number from 0.5 to 20.");
+      return;
+    }
+    if (![1, 5, 10].includes(st)) {
+      setMsg("Round to 1, 5 or 10.");
+      return;
+    }
+    if (brands.length === 0) {
+      setMsg("No brands found. Add or import brands first.");
+      return;
+    }
+    const base: Cfg = readLocal() ?? { sizes: DEFAULT_SIZES, prices: {} };
+    const prices: Cfg["prices"] = { ...base.prices };
+    let changed = 0;
+    let skipped = 0;
+    for (const b of brands) {
+      const rate = Number(b.rate) || 0;
+      const row: Record<string, string> = { ...(prices[b.id] ?? {}) };
+      let any = false;
+      for (const ml of base.sizes) {
+        const key = String(ml);
+        if (!overwrite && row[key] !== undefined && row[key] !== "") continue;
+        const p = pegPrice(rate, b.size_ml, ml, m, st);
+        if (p === null) continue;
+        row[key] = String(p);
+        any = true;
+      }
+      if (any) {
+        prices[b.id] = row;
+        changed += 1;
+      } else {
+        skipped += 1;
+      }
+    }
+    if (changed === 0) {
+      setMsg("Nothing to set: every brand already has its prices, or has no rate. Tick the box to change all.");
+      return;
+    }
+    if (
+      !confirm(
+        `Set peg prices (${base.sizes.join(", ")} ml) for ${changed} brand(s)? ${overwrite ? "Saved prices will be replaced." : "Saved prices are kept."}`
+      )
+    ) {
+      return;
+    }
+    const next: Cfg = { sizes: base.sizes, prices };
+    if (!writeLocal(next)) {
+      setMsg("Could not save on this phone (storage is blocked).");
+      return;
+    }
+    setLocal(next);
+    setMsg(
+      `Peg prices set for ${changed} brand(s). ${skipped > 0 ? `${skipped} brand(s) skipped. ` : ""}` +
+        "Open the Liquor counter tab again. To use them on other phones, send them to the cloud below."
+    );
+  }
+
   return (
-    <section className="space-y-3 rounded-md border p-3 text-sm">
-      <h2 className="font-medium">Peg prices on other phones</h2>
-      {msg && <p className="rounded-md border p-2">{msg}</p>}
-      <p className="text-muted-foreground">
-        Send the peg sizes and prices from the phone that has them, then get them on the other phone. The open bottle ml
-        is not shared: every counter has its own open bottles. Use the same login on every phone.
-      </p>
-      <p>This phone: {local ? summary(local) : "no peg prices saved yet"}</p>
-      <p>
-        Cloud:{" "}
-        {cloud.kind === "unknown"
-          ? "checking..."
-          : cloud.kind === "none"
-            ? "nothing saved yet"
-            : cloud.kind === "ok"
-              ? `${cloud.text} (saved ${stampOf(cloud.at)})`
-              : cloud.text}
-      </p>
-      <div className="flex flex-wrap items-center gap-4">
-        <button className={btn} disabled={busy} onClick={onSend}>
-          Send this phone's prices to the cloud
+    <div className="space-y-4">
+      {msg && <p className="rounded-md border p-2 text-sm">{msg}</p>}
+
+      <section className="space-y-3 rounded-md border p-3 text-sm">
+        <h2 className="font-medium">Set peg prices for all brands</h2>
+        <p className="text-muted-foreground">
+          Peg price = bottle rate x peg ml / bottle ml x multiplier, rounded. Use it once, then change single brands under
+          Prices in the Liquor counter. The peg sizes are the ones saved on this phone ({(local ? local.sizes : DEFAULT_SIZES).join(", ")} ml).
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block space-y-1">
+            <span className="text-muted-foreground">Multiplier</span>
+            <input
+              className={`${input} w-24`}
+              inputMode="decimal"
+              value={mult}
+              onChange={(e) => setMult(e.target.value.replace(/[^\d.]/g, "").slice(0, 5))}
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-muted-foreground">Round to</span>
+            <select className={input} value={step} onChange={(e) => setStep(e.target.value)}>
+              <option value="1">1 rupee</option>
+              <option value="5">5 rupees</option>
+              <option value="10">10 rupees</option>
+            </select>
+          </label>
+        </div>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
+          Also replace the prices that are already saved
+        </label>
+        {preview.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-muted-foreground">Examples:</p>
+            {preview.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">
+            {brands.length === 0 ? "No brands found yet." : "Enter a multiplier from 0.5 to 20 to see examples."}
+          </p>
+        )}
+        <button className={btn} disabled={busy || brands.length === 0} onClick={onApplyRule}>
+          Apply to all brands
         </button>
-        <button className={btn} disabled={busy} onClick={onGet}>
-          Get prices from the cloud
-        </button>
-        <button className="underline" disabled={busy} onClick={checkCloud}>
-          Check again
-        </button>
-      </div>
-    </section>
+      </section>
+
+      <section className="space-y-3 rounded-md border p-3 text-sm">
+        <h2 className="font-medium">Peg prices on other phones</h2>
+        <p className="text-muted-foreground">
+          Send the peg sizes and prices from the phone that has them, then get them on the other phone. The open bottle ml
+          is not shared: every counter has its own open bottles. Use the same login on every phone.
+        </p>
+        <p>This phone: {local ? summary(local) : "no peg prices saved yet"}</p>
+        <p>
+          Cloud:{" "}
+          {cloud.kind === "unknown"
+            ? "checking..."
+            : cloud.kind === "none"
+              ? "nothing saved yet"
+              : cloud.kind === "ok"
+                ? `${cloud.text} (saved ${stampOf(cloud.at)})`
+                : cloud.text}
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <button className={btn} disabled={busy} onClick={onSend}>
+            Send this phone's prices to the cloud
+          </button>
+          <button className={btn} disabled={busy} onClick={onGet}>
+            Get prices from the cloud
+          </button>
+          <button className="underline" disabled={busy} onClick={checkCloud}>
+            Check again
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
