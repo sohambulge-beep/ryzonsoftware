@@ -35,6 +35,16 @@ function gateEnabled(): boolean {
   }
 }
 
+// Pages anyone may read without signing in.
+function isPublicPath(): boolean {
+  try {
+    const p = window.location.pathname.replace(/\/+$/, "");
+    return p === "/terms" || p === "/privacy";
+  } catch {
+    return false;
+  }
+}
+
 // A sign-in saved on this phone, read without internet.
 function storedUser(): boolean {
   try {
@@ -49,6 +59,7 @@ function storedUser(): boolean {
 
 async function verify(): Promise<"open" | "gate"> {
   if (!gateEnabled()) return "open";
+  if (isPublicPath()) return "open";
   // A setup mistake must never lock everybody out.
   if (keyLooksUnset() || keyLooksSecret()) return "open";
   try {
@@ -122,7 +133,7 @@ function Inner() {
 
   useEffect(() => {
     aliveRef.current = true;
-    if (!gateEnabled()) {
+    if (!gateEnabled() || isPublicPath()) {
       return () => {
         aliveRef.current = false;
       };
@@ -241,6 +252,15 @@ function Inner() {
             Forgot your password? Contact on WhatsApp
           </a>
         )}
+        <p className="text-center text-xs text-muted-foreground">
+          <a className="underline" href="/terms">
+            Terms
+          </a>{" "}
+          |{" "}
+          <a className="underline" href="/privacy">
+            Privacy
+          </a>
+        </p>
       </div>
     </div>
   );
