@@ -26,6 +26,7 @@ import ActivityLogView from "@/components/ActivityLogView";
 import HelpView from "@/components/HelpView";
 import SetupCheckView from "@/components/SetupCheckView";
 import CounterTakingsView from "@/components/CounterTakingsView";
+import BrandImportView from "@/components/BrandImportView";
 import ItemProfitView from "@/components/ItemProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
@@ -48,6 +49,7 @@ import { useOwnerAccess } from "@/lib/ownerAccess";
 
 const TABS = [
   { id: "brands", label: "Brands & settings" },
+  { id: "brandimport", label: "Import brands" },
   { id: "tp", label: "TP receipts" },
   { id: "sales", label: "Daily sales" },
   { id: "prices", label: "Brand prices" },
@@ -291,6 +293,7 @@ export default function ExciseTabsView() {
       )}
 
       {current === "brands" && <ExciseView />}
+      {current === "brandimport" && <BrandImportView />}
       {current === "tp" && <ExciseTpView />}
       {current === "sales" && <ExciseSalesView />}
       {current === "prices" && <ExciseBrandsManageView />}
