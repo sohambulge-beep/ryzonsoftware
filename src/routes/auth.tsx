@@ -257,6 +257,17 @@ function AuthPage() {
         <p className="text-center text-xs text-zinc-500 mt-5">
           <Link to="/auth" className="hover:text-zinc-300">TapTrack</Link> • Secure access to your bar data
         </p>
+        <p className="text-center text-xs text-zinc-500 mt-2">
+          By continuing you agree to our{" "}
+          <a href="/terms" className="underline hover:text-zinc-300">
+            Terms
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="underline hover:text-zinc-300">
+            Privacy Policy
+          </a>
+          .
+        </p>
       </div>
     </div>
   );
