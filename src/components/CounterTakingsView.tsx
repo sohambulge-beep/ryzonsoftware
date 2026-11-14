@@ -10,6 +10,7 @@ import {
   type DayTotals,
 } from "@/lib/counterTakings";
 import { useOwnerAccess } from "@/lib/ownerAccess";
+import PegPriceSync from "@/components/PegPriceSync";
 
 const input = "rounded-md border px-3 py-2 text-sm bg-background";
 
@@ -189,6 +190,8 @@ function Inner() {
           })}
         </section>
       )}
+
+      <PegPriceSync />
     </div>
   );
 }
