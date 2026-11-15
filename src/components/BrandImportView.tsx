@@ -7,6 +7,7 @@ import {
   type ExciseCategory,
 } from "@/lib/exciseService";
 import { useOwnerAccess } from "@/lib/ownerAccess";
+import OpeningImportSection from "@/components/OpeningImportView";
 
 // The table is not all in the generated types, so cast.
 const db = supabase as any;
@@ -230,14 +231,14 @@ function Inner() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4">
-      <h1 className="text-xl font-semibold">Import brands</h1>
+      <h1 className="text-xl font-semibold">Import brands and opening stock</h1>
       {msg && <p className="text-sm rounded-md border p-2">{msg}</p>}
 
       <p className="text-sm text-muted-foreground">
         Add many brands at once. Make a list in Excel with 5 columns: name, category, size in ml, bottles per case, rate.
         Copy the cells and paste them below, or pick a CSV file. The category must be one of {EXCISE_CATEGORIES.join(", ")}.
         A brand that is already saved (same name and size) is skipped. Peg prices are not needed here: they follow the
-        bottle rate unless you set them in the Liquor counter.
+        bottle rate unless you set them in the Liquor counter. After the brands, add the opening stock further below.
       </p>
 
       <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -297,6 +298,10 @@ function Inner() {
       <button className={btn} disabled={busy || !loaded || plan.toAdd.length === 0} onClick={onImport}>
         {busy ? "Importing..." : `Import ${plan.toAdd.length} brand(s)`}
       </button>
+
+      <div className="border-t pt-6">
+        <OpeningImportSection />
+      </div>
     </div>
   );
 }
