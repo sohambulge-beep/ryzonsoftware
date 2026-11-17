@@ -3,6 +3,7 @@ import type { AppData, CartItem, ViewId, ModalId, Customer, Tap, Supplier, Expen
 import { loadState, saveState, resetToSample, clearAllData, bootFromIdb } from './data';
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
 import { addVoidEntry, whoAmI } from './lib/voidLog';
+import { addReturnEntry, type ReturnLine } from './lib/salesReturnLog';
 import {
   alwaysInterstate,
   computeGst,
@@ -38,6 +39,113 @@ export interface PosEvent {
 
 // The merge screen lives outside this provider, so it hands the other phone's records over through this bridge.
 export const storeBridge: { merge: ((events: PosEvent[]) => void) | null } = { merge: null };
+
+// ---- Sales return (partial return of a bill) ----
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const r3 = (n: number) => Math.round((n + Number.EPSILON) * 1000) / 1000;
+
+export type ReturnBuild =
+  | { error: string }
+  | { refundTotal: number; lines: ReturnLine[]; invoice: Invoice; db: AppData };
+
+// Works out what a return does, without changing anything. The same function is used for the preview,
+// the check before saving, and the real change, so they can never disagree.
+export function buildReturn(db: AppData, invoiceId: string, req: { beerId: string; qty: number }[]): ReturnBuild {
+  const inv = db.invoices.find(i => i.id === invoiceId);
+  if (!inv) return { error: 'This bill was not found. It may already be cancelled.' };
+  if (inv.gst) {
+    return { error: 'This is a GST bill. Returns on GST bills need a proper GST credit note, so they cannot be done here.' };
+  }
+  const wanted = req.filter(r => r.qty > 0);
+  if (wanted.length === 0) return { error: 'Choose at least one item to return.' };
+
+  const lines: ReturnLine[] = [];
+  let subtotalBack = 0;
+  let fullyReturned = true;
+  const newItems = inv.items.map(it => {
+    const w = wanted.find(r => r.beerId === it.beerId);
+    const q = w ? w.qty : 0;
+    if (q > it.qty) return null; // too many
+    if (q === 0) {
+      fullyReturned = false;
+      return it;
+    }
+    if (q < it.qty) fullyReturned = false;
+    const ratio = q / it.qty;
+    const backTotal = r2(it.total * ratio);
+    subtotalBack += backTotal;
+    lines.push({ beerId: it.beerId, beerName: it.beerName, qty: q, unitPrice: it.unitPrice, amount: backTotal });
+    return {
+      ...it,
+      qty: it.qty - q,
+      total: r2(it.total - backTotal),
+      litersTotal: r3((it.litersTotal || 0) - (it.litersTotal || 0) * ratio),
+      costTotal: r2((it.costTotal || 0) - (it.costTotal || 0) * ratio),
+    };
+  });
+  if (newItems.some(x => x === null)) return { error: 'You cannot return more than what was billed.' };
+  if (lines.length !== wanted.length) return { error: 'One of the chosen items is not on this bill.' };
+  if (fullyReturned) return { error: 'You are returning everything on this bill. Use Cancel Bill in Invoices & Sales instead.' };
+
+  const taxBack = inv.subtotal > 0 ? r2(inv.tax * (subtotalBack / inv.subtotal)) : 0;
+  const refundTotal = r2(subtotalBack + taxBack);
+  const onTab = inv.paymentMethod === 'Tab';
+  if (onTab && refundTotal > inv.balanceDue + 0.005) {
+    return {
+      error: `This udhaar bill has only ${'₹' + inv.balanceDue.toFixed(2)} still unpaid, which is less than the ${'₹' + refundTotal.toFixed(2)} being returned. Settle it with the customer another way.`,
+    };
+  }
+
+  const newSubtotal = r2(inv.subtotal - subtotalBack);
+  const newTax = r2(inv.tax - taxBack);
+  const newTotal = r2(newSubtotal + newTax);
+  let paidAmount = inv.paidAmount;
+  let balanceDue = inv.balanceDue;
+  let status: Invoice['status'] = inv.status;
+  if (onTab) {
+    balanceDue = Math.max(0, r2(inv.balanceDue - refundTotal));
+    status = balanceDue <= 0.005 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Unpaid';
+  } else {
+    paidAmount = newTotal;
+    balanceDue = 0;
+    status = 'Paid';
+  }
+
+  const invoice: Invoice = {
+    ...inv,
+    items: newItems as Invoice['items'],
+    subtotal: newSubtotal,
+    tax: newTax,
+    total: newTotal,
+    paidAmount,
+    balanceDue,
+    status,
+  };
+
+  const next: AppData = {
+    ...db,
+    invoices: db.invoices.map(i => (i.id === inv.id ? invoice : i)),
+    taps: db.taps.map(t => {
+      const back = lines.reduce((s, l) => {
+        if (l.beerId !== t.id) return s;
+        const orig = inv.items.find(i => i.beerId === l.beerId);
+        return s + (orig ? (orig.litersTotal || 0) * (l.qty / orig.qty) : 0);
+      }, 0);
+      return back > 0 ? { ...t, currentLiters: r3(t.currentLiters + back) } : t;
+    }),
+    customers: db.customers.map(c =>
+      c.id === inv.customerId
+        ? {
+            ...c,
+            totalSpent: Math.max(0, r2((c.totalSpent || 0) - refundTotal)),
+            currentBalance: onTab ? Math.max(0, r2((c.currentBalance || 0) - refundTotal)) : c.currentBalance,
+          }
+        : c
+    ),
+  };
+
+  return { refundTotal, lines, invoice, db: next };
+}
 
 // Cancels one bill: the bill goes away, the litres go back into the keg, and the customer's totals are reversed.
 // If the bill is not there (already cancelled or never arrived), nothing changes.
@@ -283,6 +391,7 @@ interface StoreContextValue {
   savePurchase: (data: { supplierId: string; beerId: string; kegQty: number; litersPerKeg: number; costPerLiter: number }) => void;
   savePayment: (data: { customerId: string; amount: number; paymentMethod: string; notes: string }) => void;
   voidInvoice: (invoiceId: string, reason: string) => { ok: boolean; message: string };
+  returnItems: (invoiceId: string, lines: { beerId: string; qty: number }[], reason: string) => { ok: boolean; message: string };
   restoreData: (data: AppData) => void;
   loadSample: () => void;
   clearAll: () => void;
@@ -766,6 +875,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: `Bill ${inv.invoiceNo} cancelled.` };
   }, [db]);
 
+  // Takes some items back from a bill. The record is saved first; only then does the bill change.
+  const returnItems = useCallback((invoiceId: string, lines: { beerId: string; qty: number }[], reason: string): { ok: boolean; message: string } => {
+    const why = reason.trim();
+    if (why.length < 3) return { ok: false, message: 'Please write a reason (at least 3 letters).' };
+    const plan = buildReturn(db, invoiceId, lines);
+    if ('error' in plan) return { ok: false, message: plan.error };
+    const inv = db.invoices.find(i => i.id === invoiceId);
+    if (!inv) return { ok: false, message: 'This bill was not found.' };
+    const stamp = Date.now();
+    const saved = addReturnEntry({
+      id: `ret-${stamp}`,
+      creditNoteNo: `CN-${String(stamp).slice(-6)}`,
+      invoiceId: inv.id,
+      invoiceNo: inv.invoiceNo,
+      at: new Date(stamp).toISOString(),
+      reason: why.slice(0, 200),
+      by: whoAmI(),
+      customerName: inv.customerName,
+      paymentMethod: inv.paymentMethod,
+      lines: plan.lines,
+      refundTotal: plan.refundTotal,
+    });
+    if (!saved) {
+      return { ok: false, message: 'Could not save the return record on this phone, so nothing was changed.' };
+    }
+    setDb(prev => {
+      const again = buildReturn(prev, invoiceId, lines);
+      return 'error' in again ? prev : again.db;
+    });
+    const how = inv.paymentMethod === 'Tab'
+      ? `₹${plan.refundTotal.toFixed(2)} has been reduced from the customer's tab.`
+      : `Give ₹${plan.refundTotal.toFixed(2)} back to the customer (${inv.paymentMethod}).`;
+    return { ok: true, message: `Return saved for ${inv.invoiceNo}. ${how}` };
+  }, [db]);
+
   const restoreData = useCallback((data: AppData) => {
     setDb(data);
   }, []);
@@ -794,7 +938,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     db, cart, currentView, modal, navigate, openModal, closeModal,
     clearCart, addToCart, updateCartQty, setCartCustomer, cartCustomerId,
     processCheckout, processTableCheckout, quickPour, saveCustomer, saveBeer, saveSupplier,
-    saveExpense, deleteExpense, savePurchase, savePayment, voidInvoice,
+    saveExpense, deleteExpense, savePurchase, savePayment, voidInvoice, returnItems,
     restoreData, loadSample, clearAll,
   };
 
