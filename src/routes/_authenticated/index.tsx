@@ -26,6 +26,8 @@ import ExciseView from "@/views/ExciseTabsView";
 import BankStatementView from "@/views/BankTabsView";
 import DataExportView from "@/views/DataExportView";
 import ActivityLogView from "@/views/ActivityLogView";
+import { SalesReturnView } from "@/views/SalesReturnView";
+import { StockAuditView } from "@/views/StockAuditView";
 import { PlanProvider, usePlan, UpgradeDialog, LockedFeature, type FeatureId } from "@/lib/plan";
 import { CustomerModal } from "@/modals/CustomerModal";
 import { BeerModal } from "@/modals/BeerModal";
@@ -97,6 +99,8 @@ function AppContent() {
     bank: <RoleGuard module="bank"><BankStatementView /></RoleGuard>,
     export: <RoleGuard module="export"><DataExportView /></RoleGuard>,
     activity: <RoleGuard module="activity"><ActivityLogView /></RoleGuard>,
+    returns: <RoleGuard module="returns"><SalesReturnView /></RoleGuard>,
+    stockaudit: <RoleGuard module="stockaudit"><StockAuditView /></RoleGuard>,
   };
 
   const gate = VIEW_FEATURE[currentView];
