@@ -19,6 +19,8 @@ const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
     bank: { title: 'Bank', subtitle: 'Bank accounts and statement entries' },
     export: { title: 'Export', subtitle: 'Download your business data as CSV' },
     activity: { title: 'Activity log', subtitle: 'History of excise and bank changes' },
+    stockaudit: { title: 'Stock Audit', subtitle: 'Compare the real litres in each keg with the software and see the shortage' },
+    returns: { title: 'Sales Returns & Credit Notes', subtitle: 'Take back items from a bill: stock returns to the keg and the bill is reduced' },
   suppliers: { title: 'Suppliers & Purchases', subtitle: 'Record keg purchases with automatic inventory restock and cost tracking' },
   payments: { title: 'Customer Payments & Credit Ledger', subtitle: 'Record tab payments, track balances, and inspect transaction logs' },
   profitloss: { title: 'Profit & Loss Statement', subtitle: 'Gross margin, product cost (COGS), operating expenses and net profit' },
