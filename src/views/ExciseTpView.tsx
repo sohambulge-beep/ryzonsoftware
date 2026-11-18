@@ -7,6 +7,7 @@ import {
   listTpReceipts,
   setTpStatus,
 } from "@/lib/exciseTpService";
+import TpImportPanel from "@/components/TpImportPanel";
 
 const input = "w-full rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
@@ -119,6 +120,14 @@ export default function ExciseTpView() {
     <div className="mx-auto max-w-3xl space-y-8 p-4">
       <h1 className="text-xl font-semibold">TP receipts</h1>
       {msg && <p className="text-sm rounded-md border p-2">{msg}</p>}
+
+      <TpImportPanel
+        brands={brands}
+        existingTpNos={receipts.map((r) => r.tp_no)}
+        onSaved={load}
+        onBrandsChanged={load}
+        onMessage={setMsg}
+      />
 
       <section className="space-y-3">
         <h2 className="font-medium">New TP receipt</h2>
@@ -257,4 +266,4 @@ export default function ExciseTpView() {
       </section>
     </div>
   );
-    }
+}
