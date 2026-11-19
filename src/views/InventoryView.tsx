@@ -1,5 +1,6 @@
 import { useStore } from '@/store';
 import { TapCard } from '@/components/TapCard';
+import { SmartReorderPanel } from '@/components/SmartReorderPanel';
 
 export function InventoryView() {
   const { db, openModal } = useStore();
@@ -20,6 +21,8 @@ export function InventoryView() {
           </button>
         </div>
       </div>
+
+      <SmartReorderPanel />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {db.taps.map(t => <TapCard key={t.id} tap={t} variant="inventory" />)}
