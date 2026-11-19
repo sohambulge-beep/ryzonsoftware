@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 
 const OFF_KEY = "pt_theme_off";
 
-// Everything here is static (no blur, no moving parts), so scrolling stays smooth on cheap phones.
+// Static look (no moving parts), so scrolling stays smooth on cheap phones. A light blur is used only on the small dashboard cards.
 const css = `
 html { background-color: #050113; overscroll-behavior-y: none; }
-body { overscroll-behavior-y: none; }
+/* The body must be see-through. Its own dark colour was painting over the purple light and hiding it. */
+body { overscroll-behavior-y: none; background-color: transparent !important; }
 
 body::before {
   content: "";
@@ -117,6 +118,32 @@ button.bg-amber-600 { box-shadow: 0 0 12px rgba(245, 158, 11, .40); }
   font-weight: 800;
   color: #fbbf24 !important;
   text-shadow: 0 0 14px rgba(251, 191, 36, .75), 0 0 34px rgba(245, 158, 11, .4);
+}
+
+/* Side menu: solid on phones, because it slides over the page and the page must not show through it. */
+aside.bg-zinc-950 {
+  background: linear-gradient(180deg, #12094a 0%, #0b0528 55%, #070318 100%) !important;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, .55);
+}
+@media (min-width: 768px) {
+  aside.bg-zinc-950 {
+    background: linear-gradient(180deg, rgba(22, 11, 58, .62), rgba(8, 4, 24, .74)) !important;
+    box-shadow: none;
+  }
+}
+
+/* A light blur behind the dashboard cards, only where the phone or screen supports it. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pt-glass:not(.pt-panel) {
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    backdrop-filter: blur(10px) saturate(130%);
+  }
+}
+@media (min-width: 768px) {
+  .pt-glass.pt-panel {
+    -webkit-backdrop-filter: blur(8px) saturate(125%);
+    backdrop-filter: blur(8px) saturate(125%);
+  }
 }
 `;
 
