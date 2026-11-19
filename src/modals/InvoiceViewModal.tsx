@@ -1,4 +1,4 @@
-import { Modal } from '@/components/Modal';
+import { SplitBillPanel } from '@/components/SplitBillPanel';import { Modal } from '@/components/Modal';
 import { useStore } from '@/store';
 import { fmtMoney, fmtDateTime } from '@/utils';
 import { sendInvoiceOnWhatsApp } from '@/lib/whatsapp';
