@@ -55,9 +55,9 @@ function Inner() {
         const uid: string | undefined = s?.session?.user?.id;
         if (!uid) return;
         // Only this login's own customer row is read (an admin has none, so nothing changes).
-        const res: any = await withTimeout(c.from("businesses").select("plan").eq("user_id", uid).limit(1), 8000);
+        const res: any = await withTimeout(c.from("businesses").select("plan_tier").eq("user_id", uid).limit(1), 8000);
         if (res.error) return;
-        const next = asPlan((res.data ?? [])[0]?.plan);
+        const next = asPlan((res.data ?? [])[0]?.plan_tier);
         if (!next || readPersistedPlan() === next) return;
         persistPlan(next);
         // Right after the app opens, reload once so the new plan applies at once. Never in the middle of a bill.
