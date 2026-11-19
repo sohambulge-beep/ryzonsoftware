@@ -4,6 +4,18 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { usePlan, type FeatureId } from '@/lib/plan';
 import { useRole, filterItemsForRole } from '@/components/RoleGuard';
+import {
+  applyTextSize,
+  cleanHidden,
+  menuMode,
+  readHidden,
+  readTextSize,
+  saveHidden,
+  saveTextSize,
+  simpleHidden,
+  toggleId,
+  type TextSize,
+} from '@/lib/menuPrefs';
 
 const NAV_ITEMS: {
   section: string;
@@ -58,6 +70,8 @@ for (const g of NAV_ITEMS) {
 }
 ITEM_LOOKUP.set('settings', { label: 'Settings & Plan', icon: 'fa-solid fa-gear' });
 
+const ALL_NAV_IDS: string[] = NAV_ITEMS.flatMap(g => g.items.map(i => i.id as string));
+
 const RECENT_KEY = 'pt_recent_views';
 const MAX_KEPT = 8;
 const SHOW_RECENT = 3;
@@ -102,6 +116,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const [recentsReady, setRecentsReady] = useState(false);
   const [guideHidden, setGuideHidden] = useState(true);
   const [backupDone, setBackupDone] = useState(false);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [textSize, setTextSize] = useState<TextSize>('normal');
 
   // Settings & Plan is for the owner (or someone the owner gave the permission to).
   const permissionList: string[] = permissions;
@@ -153,6 +170,26 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }, [db, currentView]);
 
+  // The person's own menu choices are read only after the page has opened (keeps server and browser the same).
+  useEffect(() => {
+    setHidden(readHidden(ALL_NAV_IDS));
+    const size = readTextSize();
+    setTextSize(size);
+    applyTextSize(size);
+  }, []);
+
+  function updateHidden(next: string[]) {
+    const clean = cleanHidden(next, ALL_NAV_IDS);
+    setHidden(clean);
+    saveHidden(clean);
+  }
+
+  function chooseTextSize(size: TextSize) {
+    setTextSize(size);
+    saveTextSize(size);
+    applyTextSize(size);
+  }
+
   function hideGuide() {
     setGuideHidden(true);
     try {
@@ -187,7 +224,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   if (canSettings) allowedIds.add('settings');
 
   const recentItems = recents
-    .filter(id => id !== currentView && id !== 'dashboard' && allowedIds.has(id) && ITEM_LOOKUP.has(id))
+    .filter(id => id !== currentView && id !== 'dashboard' && allowedIds.has(id) && ITEM_LOOKUP.has(id) && !hidden.includes(id))
     .slice(0, SHOW_RECENT)
     .map(id => ({ id, ...ITEM_LOOKUP.get(id)! }));
 
@@ -335,7 +372,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             </div>
           )}
 
-          {NAV_ITEMS.map(group => (
+          {NAV_ITEMS.map(group => {
+            const items = (roleLoading ? group.items : filterItemsForRole(group.items, role, permissions)).filter(item => {
+              const feature = VIEW_FEATURE[item.id];
+              return !feature || hasFeature(feature);
+            });
+            const visible = editing ? items : items.filter(item => !hidden.includes(item.id));
+            if (visible.length === 0) return null;
+            return (
             <div key={group.section}>
               <div
                 className={`text-[11px] font-mono uppercase tracking-wider px-3 mb-2 font-semibold ${
@@ -346,45 +390,120 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 {group.section}
               </div>
               <nav className="space-y-1">
-                {(roleLoading ? group.items : filterItemsForRole(group.items, role, permissions)).filter(item => {
-                  const feature = VIEW_FEATURE[item.id];
-                  return !feature || hasFeature(feature);
-                }).map(item => {
-                  const feature = VIEW_FEATURE[item.id];
+                {visible.map(item => {
+                  const isHidden = hidden.includes(item.id);
+                  const locked = item.id === 'dashboard';
                   return (
                   <button
                     key={item.id}
                     onClick={() => {
+                      if (editing) {
+                        if (!locked) updateHidden(toggleId(hidden, item.id, ALL_NAV_IDS));
+                        return;
+                      }
                       navigate(item.id); onClose();
                     }}
                     type="button"
                     className={`nav-link w-full flex items-center gap-x-3 px-3.5 py-3.5 rounded-lg text-sm cursor-pointer transition-colors duration-150 touch-manipulation text-left ${
-                      currentView === item.id
+                      editing && isHidden ? 'opacity-45' : ''
+                    } ${
+                      currentView === item.id && !editing
                         ? 'bg-amber-500 text-zinc-950 font-semibold'
                         : 'text-zinc-300 hover:bg-zinc-800 active:bg-zinc-800'
                     }`}
                   >
-                    <i className={`${item.icon} w-5 text-center ${currentView === item.id ? 'text-zinc-950' : item.iconClass ?? 'text-zinc-400'}`} />
+                    <i className={`${item.icon} w-5 text-center ${currentView === item.id && !editing ? 'text-zinc-950' : item.iconClass ?? 'text-zinc-400'}`} />
                     <span className="flex-1">{item.label}</span>
-                    {item.id === 'pos' && (
-                      <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                        currentView === item.id ? 'bg-zinc-900/30 text-zinc-900' : 'bg-amber-500/20 text-amber-400'
-                      }`}>Live</span>
-                    )}
-                    {badges[item.id] && item.id !== 'pos' && (
-                      <span className={`ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                        item.id === 'expenses' ? 'bg-red-950/80 border border-red-900/40 text-red-300' :
-                        item.id === 'inventory' ? 'bg-amber-500/20 text-amber-300' :
-                        item.id === 'payments' ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
-                        'bg-zinc-800 text-zinc-300'
-                      }`}>{badges[item.id]}</span>
+                    {editing ? (
+                      <i
+                        className={`fa-solid ${locked ? 'fa-lock' : isHidden ? 'fa-eye-slash' : 'fa-eye'} ml-auto text-xs ${
+                          isHidden ? 'text-zinc-500' : 'text-emerald-400'
+                        }`}
+                      />
+                    ) : (
+                      <>
+                        {item.id === 'pos' && (
+                          <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                            currentView === item.id ? 'bg-zinc-900/30 text-zinc-900' : 'bg-amber-500/20 text-amber-400'
+                          }`}>Live</span>
+                        )}
+                        {badges[item.id] && item.id !== 'pos' && (
+                          <span className={`ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                            item.id === 'expenses' ? 'bg-red-950/80 border border-red-900/40 text-red-300' :
+                            item.id === 'inventory' ? 'bg-amber-500/20 text-amber-300' :
+                            item.id === 'payments' ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+                            'bg-zinc-800 text-zinc-300'
+                          }`}>{badges[item.id]}</span>
+                        )}
+                      </>
                     )}
                   </button>
                   );
                 })}
               </nav>
             </div>
-          ))}
+            );
+          })}
+
+          {/* My menu: simple / full / customize, and bigger text */}
+          <div className="rounded-lg border border-zinc-700/70 p-3 space-y-2.5">
+            <div className="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400/90">Apna menu</div>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                ['simple', 'Simple'],
+                ['full', 'Poora'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    updateHidden(mode === 'simple' ? simpleHidden(ALL_NAV_IDS) : []);
+                    setEditing(false);
+                  }}
+                  className={`rounded-md border px-3 py-2 text-xs touch-manipulation ${
+                    !editing && menuMode(hidden, ALL_NAV_IDS) === mode
+                      ? 'border-amber-500 bg-amber-500/20 text-amber-200'
+                      : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setEditing(v => !v)}
+                className={`rounded-md border px-3 py-2 text-xs touch-manipulation ${
+                  editing ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                {editing ? 'Ho gaya' : 'Customize'}
+              </button>
+            </div>
+            {editing && (
+              <p className="text-[11px] text-zinc-400">Jis screen pe tap karoge wo chhup ya dikh jayegi. Hari aankh = dikhegi.</p>
+            )}
+            {!editing && hidden.length > 0 && (
+              <p className="text-[11px] text-zinc-400">Chhupi hui screens upar ke Search button se khul jaati hain.</p>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-zinc-400 mr-1">Text:</span>
+              {([
+                ['normal', 'Normal'],
+                ['large', 'Bada'],
+              ] as const).map(([size, label]) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => chooseTextSize(size)}
+                  className={`rounded-md border px-3 py-2 text-xs touch-manipulation ${
+                    textSize === size ? 'border-amber-500 bg-amber-500/20 text-amber-200' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Pricing Link */}
           <div className="mt-5">
