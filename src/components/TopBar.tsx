@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '@/store';
 import type { ViewId } from '@/types';
 import { AlertBell } from '@/components/AlertBell';
 import { usePlan } from '@/lib/plan';
 import { AccountMenu } from '@/components/AccountMenu';
+import { QuickSearch } from '@/components/QuickSearch';
+import PremiumThemePlus from '@/components/PremiumThemePlus';
 
 const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   dashboard: { title: 'Dashboard Overview', subtitle: 'Real-time business performance and craft tap line tracker' },
@@ -34,8 +37,22 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { currentView, navigate, openModal } = useStore();
   const { hasFeature } = usePlan();
   const info = TITLES[currentView];
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K (or Cmd+K) opens the search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
+    <>
     <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 md:px-6 bg-zinc-950/80 md:backdrop-blur z-10 flex-shrink-0">
       <div className="flex items-center gap-3">
         <button className="md:hidden text-zinc-300 p-2.5 hover:bg-zinc-800 rounded-lg" onClick={onMenuClick}>
@@ -47,6 +64,14 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         </div>
       </div>
       <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Search (Ctrl+K)"
+          className="bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 rounded-lg py-2 px-2.5 md:px-3 text-xs md:text-sm transition flex items-center gap-2"
+        >
+          <i className="fa-solid fa-magnifying-glass" />
+          <span className="hidden md:inline">Search</span>
+        </button>
         {hasFeature('alerts') && <AlertBell />}
         <button
           onClick={() => navigate('pos')}
@@ -65,5 +90,8 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         <AccountMenu />
       </div>
     </header>
+    <QuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+    <PremiumThemePlus />
+    </>
   );
 }
