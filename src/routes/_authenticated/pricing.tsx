@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { readPersistedPlan, type PlanId } from "@/lib/plan";
 import { PROVIDER_PHONE } from "@/lib/providerConfig";
+import { useServerFn } from "@tanstack/react-start";
+import { createRazorpayOrder, verifyRazorpayPayment } from "@/lib/razorpay.functions";
+import { payForPlan } from "@/lib/razorpayCheckout";
 
 interface PricingPlan {
   id: PlanId;
@@ -87,12 +90,39 @@ export const Route = createFileRoute("/_authenticated/pricing")({
 function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [activePlan, setActivePlan] = useState<PlanId | null>(null);
+  const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
+  const [notice, setNotice] = useState("");
+  const createOrderFn = useServerFn(createRazorpayOrder);
+  const verifyPaymentFn = useServerFn(verifyRazorpayPayment);
 
   useEffect(() => {
     setActivePlan(readPersistedPlan());
   }, []);
 
-  // The plan is set by the provider. A customer asks for a change on WhatsApp.
+  // Online payment with Razorpay. The server decides the price and checks the payment.
+  const payNow = async (plan: PricingPlan) => {
+    if (busyPlan) return;
+    setBusyPlan(plan.id);
+    setNotice("");
+    try {
+      const out = await payForPlan({
+        plan: plan.id,
+        cycle: billingCycle,
+        createOrder: createOrderFn,
+        verifyPayment: verifyPaymentFn,
+      });
+      setNotice(out.message);
+      if (out.status === "active") {
+        setActivePlan(plan.id);
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    } catch {
+      setNotice("Something went wrong. Please try again.");
+    }
+    setBusyPlan(null);
+  };
+
+  // Help on WhatsApp (still available).
   const askForPlan = (name: string) => {
     const digits = PROVIDER_PHONE.replace(/\D/g, "");
     const text = `Hello, I want to switch my Prime Terminal plan to ${name}.`;
@@ -140,8 +170,21 @@ function PricingPage() {
           Pick the plan that fits your bar. Upgrade or downgrade anytime as your business grows.
         </p>
         <p className="text-zinc-500 max-w-2xl mx-auto text-sm mt-2">
-          Your plan is set by your provider. To change it, tap the button on a plan and message us on WhatsApp.
+          Tap Pay on a plan to subscribe or renew online with UPI, card or net banking. Need help?{" "}
+          <button
+            type="button"
+            onClick={() => askForPlan("a different plan")}
+            className="text-amber-400 underline cursor-pointer"
+          >
+            Message us on WhatsApp
+          </button>
+          .
         </p>
+        {notice && (
+          <p className="mx-auto mt-4 max-w-2xl rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            {notice}
+          </p>
+        )}
         <div className="mt-7 inline-flex items-center rounded-lg border border-zinc-700 bg-zinc-900 p-1" aria-label="Billing cycle">
           <button
             type="button"
@@ -209,17 +252,19 @@ function PricingPage() {
 
               <button
                 type="button"
-                disabled={activePlan === plan.id}
-                onClick={() => askForPlan(plan.name)}
+                disabled={busyPlan !== null}
+                onClick={() => payNow(plan)}
                 className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
                   activePlan === plan.id
-                    ? "bg-emerald-600 text-white cursor-default"
+                    ? "bg-emerald-600 text-white"
                     : plan.highlighted
                     ? "bg-gradient-to-r from-amber-400 to-amber-600 text-zinc-950 hover:brightness-110"
                     : "bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700"
                 }`}
               >
-                {activePlan === plan.id ? "Current Plan" : "Ask on WhatsApp"}
+                {busyPlan === plan.id
+                  ? "Opening payment..."
+                  : `${activePlan === plan.id ? "Renew" : "Pay"} ₹${(billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice).toLocaleString("en-IN")}`}
               </button>
             </div>
           ))}
