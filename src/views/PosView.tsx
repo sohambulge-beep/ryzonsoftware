@@ -1,11 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store';
 import { fmtMoney } from '@/utils';
+import { DiscountBox } from '@/components/DiscountBox';
+import { checkDiscount, type DiscountInput } from '@/lib/billDiscount';
+import { useOwnerAccess } from '@/lib/ownerAccess';
+import { readCachedGstSettings } from '@/lib/gst';
 
 const CATEGORIES = ['all', 'IPA', 'Stout', 'Lager', 'Wheat'];
 
 export function PosView() {
-  const { db, cart, addToCart, updateCartQty, clearCart, setCartCustomer, cartCustomerId, processCheckout, openModal } = useStore();
+  const { db, cart, addToCart, updateCartQty, clearCart, setCartCustomer, cartCustomerId, processCheckout, applyDiscount, openModal } = useStore();
+  const { isOwner } = useOwnerAccess();
+  const [discount, setDiscount] = useState<DiscountInput | null>(null);
+  const [discountKey, setDiscountKey] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -18,12 +25,36 @@ export function PosView() {
   }, [db.taps, search, category]);
 
   const subtotal = cart.reduce((s, i) => s + i.total, 0);
-  const tax = Number((subtotal * db.settings.taxRate).toFixed(2));
-  const total = Number((subtotal + tax).toFixed(2));
+  // Discount is not offered on GST bills yet (their tax and e-invoice records need a separate step).
+  const gstOn = readCachedGstSettings().gstEnabled;
+  const discountCheck = discount && !gstOn ? checkDiscount(subtotal, discount, isOwner) : null;
+  const discountAmount = discountCheck && discountCheck.ok ? discountCheck.amount : 0;
+  const netSubtotal = Number((subtotal - discountAmount).toFixed(2));
+  const tax = Number((netSubtotal * db.settings.taxRate).toFixed(2));
+  const total = Number((netSubtotal + tax).toFixed(2));
+
+  const resetDiscount = () => {
+    setDiscount(null);
+    setDiscountKey(k => k + 1);
+  };
+
+  // An empty ticket cannot have a discount.
+  useEffect(() => {
+    if (cart.length === 0) resetDiscount();
+  }, [cart.length]);
 
   const checkout = (method: 'Cash' | 'Card' | 'Tab') => {
+    if (discount && !gstOn) {
+      const check = checkDiscount(subtotal, discount, isOwner);
+      if (!check.ok) {
+        alert(check.error);
+        return;
+      }
+    }
     const invId = processCheckout(method);
     if (invId) {
+      if (discount && !gstOn) applyDiscount(invId, discount, isOwner);
+      resetDiscount();
       openModal('invoiceView', invId);
     }
   };
@@ -102,7 +133,7 @@ export function PosView() {
             <i className="fa-solid fa-receipt text-amber-400" />
             <h3 className="font-bold text-white text-sm">Active Pour Ticket</h3>
           </div>
-          <button onClick={clearCart} className="text-xs text-red-400 hover:underline px-2 py-1">Clear</button>
+          <button onClick={() => { clearCart(); resetDiscount(); }} className="text-xs text-red-400 hover:underline px-2 py-1">Clear</button>
         </div>
 
         <div className="py-3 border-b border-zinc-800/80">
@@ -151,6 +182,21 @@ export function PosView() {
             <span>Subtotal</span>
             <span className="font-mono text-zinc-200">{fmtMoney(subtotal)}</span>
           </div>
+          {cart.length > 0 && (
+            <DiscountBox
+              key={discountKey}
+              subtotal={subtotal}
+              isOwner={isOwner}
+              blockedReason={gstOn ? 'Discount is not available on GST bills yet.' : undefined}
+              onChange={setDiscount}
+            />
+          )}
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-emerald-400">
+              <span>Discount</span>
+              <span className="font-mono">-{fmtMoney(discountAmount)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-zinc-400">
             <span>Tax ({(db.settings.taxRate * 100).toFixed(1)}%)</span>
             <span className="font-mono text-zinc-200">{fmtMoney(tax)}</span>
