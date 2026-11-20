@@ -85,6 +85,10 @@ export interface Invoice {
   timestamp: string;
   /** GST breakdown, present only when GST billing was on for this sale. */
   gst?: InvoiceGst;
+  /** Discount given on this bill (rupees, taken off before tax). Item totals already include it. */
+  discount?: number;
+  discountReason?: string;
+  discountBy?: string;
 }
 
 export interface InvoiceGstLine {
