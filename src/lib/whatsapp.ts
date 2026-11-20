@@ -29,6 +29,9 @@ export function buildInvoiceMessage(invoice: Invoice, settings: Settings): strin
   }
   lines.push("");
   lines.push(`Subtotal: ${fmtMoney(invoice.subtotal)}`);
+  if ((invoice.discount ?? 0) > 0) {
+    lines.push(`Discount given (already included): ${fmtMoney(invoice.discount ?? 0)}`);
+  }
   lines.push(`GST / Tax (${taxPct}): ${fmtMoney(invoice.tax)}`);
   lines.push(`*Grand Total: ${fmtMoney(invoice.total)}*`);
   lines.push(`Paid: ${fmtMoney(invoice.paidAmount)} (${invoice.paymentMethod})`);
