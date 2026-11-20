@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store';
 import { fmtMoney } from '@/utils';
+import { RecurringExpensesPanel } from '@/components/RecurringExpensesPanel';
 
 const CATEGORIES = ['CO2 & Gas', 'Rent & Utilities', 'Staff & Wages', 'Maintenance & Line Cleaning', 'Bar Supplies', 'Licensing & Taxes', 'Other'];
 
@@ -41,6 +42,8 @@ export function ExpensesView() {
           <i className="fa-solid fa-receipt" /> Record Expense
         </button>
       </div>
+
+      <RecurringExpensesPanel />
 
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
