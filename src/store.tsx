@@ -4,6 +4,7 @@ import { loadState, saveState, resetToSample, clearAllData, bootFromIdb } from '
 import { genId, genInvoiceNo, genReceiptNo, genPoNo, todayStr } from './utils';
 import { addVoidEntry, whoAmI } from './lib/voidLog';
 import { addReturnEntry, type ReturnLine } from './lib/salesReturnLog';
+import { applyDiscountToDb, type DiscountInput } from './lib/billDiscount';
 import {
   alwaysInterstate,
   computeGst,
@@ -392,6 +393,7 @@ interface StoreContextValue {
   savePayment: (data: { customerId: string; amount: number; paymentMethod: string; notes: string }) => void;
   voidInvoice: (invoiceId: string, reason: string) => { ok: boolean; message: string };
   returnItems: (invoiceId: string, lines: { beerId: string; qty: number }[], reason: string) => { ok: boolean; message: string };
+  applyDiscount: (invoiceId: string, input: DiscountInput, isOwner: boolean) => void;
   restoreData: (data: AppData) => void;
   loadSample: () => void;
   clearAll: () => void;
@@ -910,6 +912,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: `Return saved for ${inv.invoiceNo}. ${how}` };
   }, [db]);
 
+  // Gives a discount on a bill that was just created. Only that bill (and the customer's totals) change; stock is untouched.
+  // The check runs again on the latest data, so a discount that is not allowed is simply ignored.
+  const applyDiscount = useCallback((invoiceId: string, input: DiscountInput, isOwner: boolean): void => {
+    const by = whoAmI();
+    setDb(prev => {
+      const result = applyDiscountToDb(prev, invoiceId, input, { isOwner, by });
+      return 'error' in result ? prev : result.db;
+    });
+  }, []);
+
   const restoreData = useCallback((data: AppData) => {
     setDb(data);
   }, []);
@@ -938,7 +950,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     db, cart, currentView, modal, navigate, openModal, closeModal,
     clearCart, addToCart, updateCartQty, setCartCustomer, cartCustomerId,
     processCheckout, processTableCheckout, quickPour, saveCustomer, saveBeer, saveSupplier,
-    saveExpense, deleteExpense, savePurchase, savePayment, voidInvoice, returnItems,
+    saveExpense, deleteExpense, savePurchase, savePayment, voidInvoice, returnItems, applyDiscount,
     restoreData, loadSample, clearAll,
   };
 
