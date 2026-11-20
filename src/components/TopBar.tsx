@@ -6,6 +6,7 @@ import { usePlan } from '@/lib/plan';
 import { AccountMenu } from '@/components/AccountMenu';
 import { QuickSearch } from '@/components/QuickSearch';
 import PremiumThemePlus from '@/components/PremiumThemePlus';
+import { RecurringExpenseRunner } from '@/components/RecurringExpenseRunner';
 
 const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   dashboard: { title: 'Dashboard Overview', subtitle: 'Real-time business performance and craft tap line tracker' },
@@ -92,6 +93,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     </header>
     <QuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     <PremiumThemePlus />
+    <RecurringExpenseRunner />
     </>
   );
 }
