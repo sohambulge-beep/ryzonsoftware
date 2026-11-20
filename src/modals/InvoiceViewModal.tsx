@@ -243,6 +243,12 @@ export function InvoiceViewModal() {
         </div>
         <div className="py-3 space-y-1 text-xs font-mono border-b border-zinc-300">
           <div className="flex justify-between"><span>Subtotal:</span> <span>{fmtMoney(inv.subtotal)}</span></div>
+          {(inv.discount ?? 0) > 0 && (
+            <div className="flex justify-between text-emerald-700 text-[11px]">
+              <span>Includes discount{inv.discountReason ? ` (${inv.discountReason})` : ''}:</span>
+              <span>{fmtMoney(inv.discount ?? 0)}</span>
+            </div>
+          )}
           <div className="flex justify-between"><span>Sales Tax ({(db.settings.taxRate * 100).toFixed(1)}%):</span> <span>{fmtMoney(inv.tax)}</span></div>
           <div className="flex justify-between font-bold text-sm pt-1 border-t border-zinc-200">
             <span>Grand Total:</span>
