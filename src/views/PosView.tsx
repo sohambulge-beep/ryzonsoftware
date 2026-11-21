@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store';
 import { fmtMoney } from '@/utils';
 import { DiscountBox } from '@/components/DiscountBox';
-import { checkDiscount, type DiscountInput } from '@/lib/billDiscount';
+import { ServiceChargeBox } from '@/components/ServiceChargeBox';
+import { checkDiscount, checkServiceCharge, type DiscountInput } from '@/lib/billDiscount';
 import { useOwnerAccess } from '@/lib/ownerAccess';
 import { readCachedGstSettings } from '@/lib/gst';
 
@@ -12,6 +13,7 @@ export function PosView() {
   const { db, cart, addToCart, updateCartQty, clearCart, setCartCustomer, cartCustomerId, processCheckout, applyDiscount, openModal } = useStore();
   const { isOwner } = useOwnerAccess();
   const [discount, setDiscount] = useState<DiscountInput | null>(null);
+  const [serviceCharge, setServiceCharge] = useState<number | null>(null);
   const [discountKey, setDiscountKey] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -30,11 +32,16 @@ export function PosView() {
   const discountCheck = discount && !gstOn ? checkDiscount(subtotal, discount, isOwner) : null;
   const discountAmount = discountCheck && discountCheck.ok ? discountCheck.amount : 0;
   const netSubtotal = Number((subtotal - discountAmount).toFixed(2));
-  const tax = Number((netSubtotal * db.settings.taxRate).toFixed(2));
-  const total = Number((netSubtotal + tax).toFixed(2));
+  // Service charge is optional, worked out on the items after discount, and taxed along with them.
+  const serviceCheck = serviceCharge && !gstOn ? checkServiceCharge(netSubtotal, serviceCharge) : null;
+  const serviceAmount = serviceCheck && serviceCheck.ok ? serviceCheck.amount : 0;
+  const taxable = Number((netSubtotal + serviceAmount).toFixed(2));
+  const tax = Number((taxable * db.settings.taxRate).toFixed(2));
+  const total = Number((taxable + tax).toFixed(2));
 
   const resetDiscount = () => {
     setDiscount(null);
+    setServiceCharge(null);
     setDiscountKey(k => k + 1);
   };
 
@@ -44,16 +51,36 @@ export function PosView() {
   }, [cart.length]);
 
   const checkout = (method: 'Cash' | 'Card' | 'Tab') => {
-    if (discount && !gstOn) {
-      const check = checkDiscount(subtotal, discount, isOwner);
-      if (!check.ok) {
-        alert(check.error);
-        return;
+    if (!gstOn) {
+      if (discount) {
+        const check = checkDiscount(subtotal, discount, isOwner);
+        if (!check.ok) {
+          alert(check.error);
+          return;
+        }
+      }
+      if (serviceCharge) {
+        const check = checkServiceCharge(netSubtotal, serviceCharge);
+        if (!check.ok) {
+          alert(check.error);
+          return;
+        }
       }
     }
     const invId = processCheckout(method);
     if (invId) {
-      if (discount && !gstOn) applyDiscount(invId, discount, isOwner);
+      if (!gstOn && (discount || serviceCharge)) {
+        applyDiscount(
+          invId,
+          {
+            mode: discount?.mode ?? 'amount',
+            value: discount?.value ?? 0,
+            reason: discount?.reason ?? '',
+            serviceChargePct: serviceCharge ?? undefined,
+          },
+          isOwner,
+        );
+      }
       resetDiscount();
       openModal('invoiceView', invId);
     }
@@ -195,6 +222,20 @@ export function PosView() {
             <div className="flex justify-between text-emerald-400">
               <span>Discount</span>
               <span className="font-mono">-{fmtMoney(discountAmount)}</span>
+            </div>
+          )}
+          {cart.length > 0 && (
+            <ServiceChargeBox
+              key={`sc-${discountKey}`}
+              base={netSubtotal}
+              disabled={gstOn}
+              onChange={setServiceCharge}
+            />
+          )}
+          {serviceAmount > 0 && (
+            <div className="flex justify-between text-zinc-300">
+              <span>Service charge ({serviceCharge}%)</span>
+              <span className="font-mono">+{fmtMoney(serviceAmount)}</span>
             </div>
           )}
           <div className="flex justify-between text-zinc-400">
