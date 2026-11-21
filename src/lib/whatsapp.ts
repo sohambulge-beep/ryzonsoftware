@@ -28,7 +28,13 @@ export function buildInvoiceMessage(invoice: Invoice, settings: Settings): strin
     );
   }
   lines.push("");
-  lines.push(`Subtotal: ${fmtMoney(invoice.subtotal)}`);
+  const serviceCharge = invoice.serviceCharge ?? 0;
+  if (serviceCharge > 0) {
+    lines.push(`Items Subtotal: ${fmtMoney(Number((invoice.subtotal - serviceCharge).toFixed(2)))}`);
+    lines.push(`Service Charge${invoice.serviceChargePct ? ` (${invoice.serviceChargePct}%)` : ""}: ${fmtMoney(serviceCharge)}`);
+  } else {
+    lines.push(`Subtotal: ${fmtMoney(invoice.subtotal)}`);
+  }
   if ((invoice.discount ?? 0) > 0) {
     lines.push(`Discount given (already included): ${fmtMoney(invoice.discount ?? 0)}`);
   }
