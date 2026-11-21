@@ -2,14 +2,23 @@ import type { AppData, Invoice } from '@/types';
 
 export type DiscountMode = 'amount' | 'percent';
 
+/**
+ * What the cashier adds to a bill after the items: an optional discount and an optional service charge.
+ * (It keeps the name DiscountInput so the store does not need any change.)
+ * value = 0 means "no discount". serviceChargePct missing or 0 means "no service charge".
+ */
 export interface DiscountInput {
   mode: DiscountMode;
   value: number;
   reason: string;
+  serviceChargePct?: number;
 }
 
 /** Staff (anyone who is not the owner) can give at most this much, as a percent of the bill. */
 export const STAFF_MAX_PERCENT = 10;
+
+/** The most service charge that can be added to one bill, as a percent. */
+export const MAX_SERVICE_CHARGE_PERCENT = 25;
 
 // All money maths below is done in paise (whole numbers) so totals always add up exactly.
 const toPaise = (n: number): number => Math.round(((Number(n) || 0) + Number.EPSILON) * 100);
@@ -44,6 +53,24 @@ export function checkDiscount(subtotal: number, input: DiscountInput, isOwner: b
 }
 
 /**
+ * Checks a service charge. `base` is the bill's items total (after any discount, before tax).
+ * Returns the service charge in rupees.
+ */
+export function checkServiceCharge(base: number, pct: number): DiscountCheck {
+  const basePaise = toPaise(base);
+  if (basePaise <= 0) return { ok: false, error: 'Add items to the bill first.' };
+
+  const p = Number(pct);
+  if (!Number.isFinite(p) || p <= 0) return { ok: false, error: 'Enter a service charge of more than 0%.' };
+  if (p > MAX_SERVICE_CHARGE_PERCENT) {
+    return { ok: false, error: `Service charge cannot be more than ${MAX_SERVICE_CHARGE_PERCENT}%.` };
+  }
+  const paise = Math.round((basePaise * p) / 100);
+  if (paise <= 0) return { ok: false, error: 'This service charge is too small to count.' };
+  return { ok: true, amount: fromPaise(paise) };
+}
+
+/**
  * Shares a discount across the bill's lines in proportion to each line, to the exact paisa.
  * Used so item totals, profit, stock reports and sales returns all see the discounted price.
  */
@@ -66,11 +93,15 @@ export function allocateDiscount(lineTotals: number[], discount: number): number
   return shares.map(fromPaise);
 }
 
-export type DiscountBuild = { error: string } | { amount: number; invoice: Invoice; db: AppData };
+export type DiscountBuild =
+  | { error: string }
+  | { amount: number; serviceCharge: number; invoice: Invoice; db: AppData };
 
 /**
- * Works out the bill after a discount, without changing anything outside the returned copy.
- * The discount is taken off before tax, and tax is worked out on what is left.
+ * Works out the bill after a discount and/or a service charge, without changing anything outside the returned copy.
+ * - The discount is shared into the item totals, so profit, reports and sales returns see the real price.
+ * - The service charge is worked out on the items after the discount. It is kept out of the item lines
+ *   (so pint counts stay right) and is added into the bill's subtotal. Tax is worked out on the whole subtotal.
  * GST bills are not changed here (their tax and e-invoice records need a separate, careful step).
  */
 export function applyDiscountToDb(
@@ -81,16 +112,37 @@ export function applyDiscountToDb(
 ): DiscountBuild {
   const inv = db.invoices.find(i => i.id === invoiceId);
   if (!inv) return { error: 'This bill was not found.' };
-  if (inv.gst) return { error: 'Discount is not available on GST bills yet.' };
-  if ((inv.discount ?? 0) > 0) return { error: 'This bill already has a discount.' };
+  if (inv.gst) return { error: 'Discount and service charge are not available on GST bills yet.' };
 
-  const grossPaise = inv.items.reduce((s, it) => s + toPaise(it.total), 0);
-  const check = checkDiscount(fromPaise(grossPaise), input, ctx.isOwner);
-  if (!check.ok) return { error: check.error };
+  const wantsDiscount = Number(input.value) > 0;
+  const wantsService = Number(input.serviceChargePct) > 0;
+  if (!wantsDiscount && !wantsService) return { error: 'There is nothing to add to this bill.' };
+  if (wantsDiscount && (inv.discount ?? 0) > 0) return { error: 'This bill already has a discount.' };
+  if (wantsService && (inv.serviceCharge ?? 0) > 0) return { error: 'This bill already has a service charge.' };
+  if (wantsDiscount && (inv.serviceCharge ?? 0) > 0) {
+    return { error: 'Give the discount before adding the service charge.' };
+  }
 
-  const shares = allocateDiscount(inv.items.map(it => it.total), check.amount);
-  const newItems = inv.items.map((it, i) => ({ ...it, total: fromPaise(toPaise(it.total) - toPaise(shares[i])) }));
-  const newSubtotal = fromPaise(newItems.reduce((s, it) => s + toPaise(it.total), 0));
+  let items = inv.items;
+  let discountAmount = 0;
+  if (wantsDiscount) {
+    const grossPaise = items.reduce((s, it) => s + toPaise(it.total), 0);
+    const check = checkDiscount(fromPaise(grossPaise), input, ctx.isOwner);
+    if (!check.ok) return { error: check.error };
+    const shares = allocateDiscount(items.map(it => it.total), check.amount);
+    items = items.map((it, i) => ({ ...it, total: fromPaise(toPaise(it.total) - toPaise(shares[i])) }));
+    discountAmount = check.amount;
+  }
+
+  const itemsPaise = items.reduce((s, it) => s + toPaise(it.total), 0);
+  let serviceAmount = 0;
+  if (wantsService) {
+    const sc = checkServiceCharge(fromPaise(itemsPaise), Number(input.serviceChargePct));
+    if (!sc.ok) return { error: sc.error };
+    serviceAmount = sc.amount;
+  }
+
+  const newSubtotal = fromPaise(itemsPaise + toPaise(serviceAmount));
   const newTax = Number((newSubtotal * db.settings.taxRate).toFixed(2));
   const newTotal = Number((newSubtotal + newTax).toFixed(2));
   const delta = fromPaise(toPaise(inv.total) - toPaise(newTotal));
@@ -110,16 +162,17 @@ export function applyDiscountToDb(
 
   const invoice: Invoice = {
     ...inv,
-    items: newItems,
+    items,
     subtotal: newSubtotal,
     tax: newTax,
     total: newTotal,
     paidAmount,
     balanceDue,
     status,
-    discount: check.amount,
-    discountReason: input.reason.trim().slice(0, 200),
-    discountBy: ctx.by,
+    ...(wantsDiscount
+      ? { discount: discountAmount, discountReason: input.reason.trim().slice(0, 200), discountBy: ctx.by }
+      : {}),
+    ...(wantsService ? { serviceCharge: serviceAmount, serviceChargePct: Number(input.serviceChargePct) } : {}),
   };
 
   const next: AppData = {
@@ -138,5 +191,5 @@ export function applyDiscountToDb(
     ),
   };
 
-  return { amount: check.amount, invoice, db: next };
+  return { amount: discountAmount, serviceCharge: serviceAmount, invoice, db: next };
 }
