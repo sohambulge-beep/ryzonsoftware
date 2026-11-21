@@ -242,7 +242,14 @@ export function InvoiceViewModal() {
           </table>
         </div>
         <div className="py-3 space-y-1 text-xs font-mono border-b border-zinc-300">
-          <div className="flex justify-between"><span>Subtotal:</span> <span>{fmtMoney(inv.subtotal)}</span></div>
+          {(inv.serviceCharge ?? 0) > 0 ? (
+            <>
+              <div className="flex justify-between"><span>Items Subtotal:</span> <span>{fmtMoney(Number((inv.subtotal - (inv.serviceCharge ?? 0)).toFixed(2)))}</span></div>
+              <div className="flex justify-between"><span>Service Charge{inv.serviceChargePct ? ` (${inv.serviceChargePct}%)` : ''}:</span> <span>{fmtMoney(inv.serviceCharge ?? 0)}</span></div>
+            </>
+          ) : (
+            <div className="flex justify-between"><span>Subtotal:</span> <span>{fmtMoney(inv.subtotal)}</span></div>
+          )}
           {(inv.discount ?? 0) > 0 && (
             <div className="flex justify-between text-emerald-700 text-[11px]">
               <span>Includes discount{inv.discountReason ? ` (${inv.discountReason})` : ''}:</span>
