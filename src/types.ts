@@ -89,6 +89,10 @@ export interface Invoice {
   discount?: number;
   discountReason?: string;
   discountBy?: string;
+  /** Optional service charge added to this bill (rupees, before tax). It is already included in `subtotal`. */
+  serviceCharge?: number;
+  /** The percent that was used to work out the service charge. */
+  serviceChargePct?: number;
 }
 
 export interface InvoiceGstLine {
