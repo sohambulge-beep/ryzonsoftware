@@ -5,6 +5,11 @@ import type { DiningTable, TableOrder, KotItem, KotRecord } from '@/types';
 import * as svc from '@/lib/tablesKotService';
 import { TableFormModal } from '@/modals/TableFormModal';
 import { KotPrintModal } from '@/modals/KotPrintModal';
+import { DiscountBox } from '@/components/DiscountBox';
+import { ServiceChargeBox } from '@/components/ServiceChargeBox';
+import { checkDiscount, checkServiceCharge, type DiscountInput } from '@/lib/billDiscount';
+import { useOwnerAccess } from '@/lib/ownerAccess';
+import { readCachedGstSettings } from '@/lib/gst';
 
 const STATUS_CARD: Record<string, string> = {
   'Free': 'border-emerald-700/60 bg-emerald-950/30 hover:border-emerald-500',
@@ -19,7 +24,8 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export function TablesKotView() {
-  const { db, processTableCheckout, openModal } = useStore();
+  const { db, processTableCheckout, applyDiscount, openModal } = useStore();
+  const { isOwner } = useOwnerAccess();
 
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +41,16 @@ export function TablesKotView() {
 
   const [tableModal, setTableModal] = useState<{ open: boolean; table: DiningTable | null }>({ open: false, table: null });
   const [printKot, setPrintKot] = useState<KotRecord | null>(null);
+
+  // Optional discount and service charge for the bill that is being settled.
+  const [discount, setDiscount] = useState<DiscountInput | null>(null);
+  const [serviceCharge, setServiceCharge] = useState<number | null>(null);
+  const [adjustKey, setAdjustKey] = useState(0);
+  const resetAdjustments = () => {
+    setDiscount(null);
+    setServiceCharge(null);
+    setAdjustKey(k => k + 1);
+  };
 
   const selected = tables.find(t => t.id === selectedId) ?? null;
 
@@ -61,6 +77,7 @@ export function TablesKotView() {
   }), [tables]);
 
   const openTable = async (t: DiningTable) => {
+    resetAdjustments();
     setSelectedId(t.id);
     setSearch('');
     setNote('');
@@ -117,6 +134,17 @@ export function TablesKotView() {
   const subtotal = draft.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const tax = Number((subtotal * db.settings.taxRate).toFixed(2));
   const total = Number((subtotal + tax).toFixed(2));
+
+  // The final bill: items, minus discount, plus service charge, then tax on that. Not offered on GST bills yet.
+  const gstOn = readCachedGstSettings().gstEnabled;
+  const discountCheck = discount && !gstOn ? checkDiscount(subtotal, discount, isOwner) : null;
+  const discountAmount = discountCheck && discountCheck.ok ? discountCheck.amount : 0;
+  const netSubtotal = Number((subtotal - discountAmount).toFixed(2));
+  const serviceCheck = serviceCharge && !gstOn ? checkServiceCharge(netSubtotal, serviceCharge) : null;
+  const serviceAmount = serviceCheck && serviceCheck.ok ? serviceCheck.amount : 0;
+  const billTaxable = Number((netSubtotal + serviceAmount).toFixed(2));
+  const billTax = Number((billTaxable * db.settings.taxRate).toFixed(2));
+  const billTotal = Number((billTaxable + billTax).toFixed(2));
 
   const filteredTaps = useMemo(() => {
     const q = search.toLowerCase();
@@ -184,6 +212,7 @@ export function TablesKotView() {
     setBusy(true);
     try {
       await svc.updateTable(selected.id, { status: 'Occupied' });
+      resetAdjustments();
       await loadTables();
     } catch (e: any) {
       alert(e?.message ?? 'Failed');
@@ -213,7 +242,23 @@ export function TablesKotView() {
       alert('Order me items nahi hain!');
       return;
     }
-    if (!confirm(`Settle ${selected.name} — ${fmtMoney(total)} via ${method}? Invoice generate hogi.`)) return;
+    if (!gstOn) {
+      if (discount) {
+        const check = checkDiscount(subtotal, discount, isOwner);
+        if (!check.ok) {
+          alert(check.error);
+          return;
+        }
+      }
+      if (serviceCharge) {
+        const check = checkServiceCharge(netSubtotal, serviceCharge);
+        if (!check.ok) {
+          alert(check.error);
+          return;
+        }
+      }
+    }
+    if (!confirm(`Settle ${selected.name} — ${fmtMoney(billTotal)} via ${method}? Invoice generate hogi.`)) return;
     setBusy(true);
     try {
       const items = draft.map(i => {
@@ -230,6 +275,19 @@ export function TablesKotView() {
       });
       const invoiceId = processTableCheckout(items, method);
       if (invoiceId) {
+        if (!gstOn && (discount || serviceCharge)) {
+          applyDiscount(
+            invoiceId,
+            {
+              mode: discount?.mode ?? 'amount',
+              value: discount?.value ?? 0,
+              reason: discount?.reason ?? '',
+              serviceChargePct: serviceCharge ?? undefined,
+            },
+            isOwner,
+          );
+        }
+        resetAdjustments();
         await svc.settleOrder(order.id, selected.id, invoiceId);
         openModal('invoiceView', invoiceId);
         setOrder(null); setDraft([]); setKots([]); setSelectedId(null);
@@ -375,8 +433,27 @@ export function TablesKotView() {
                     <div className="text-rose-300 font-bold text-xs uppercase tracking-wider font-mono mb-2">Bill Ready</div>
                     <div className="flex justify-between text-zinc-400 text-xs"><span>Items</span><span className="font-mono">{draft.reduce((s, i) => s + i.qty, 0)}</span></div>
                     <div className="flex justify-between text-zinc-400 text-xs"><span>Subtotal</span><span className="font-mono">{fmtMoney(subtotal)}</span></div>
-                    <div className="flex justify-between text-zinc-400 text-xs"><span>Tax ({(db.settings.taxRate * 100).toFixed(1)}%)</span><span className="font-mono">{fmtMoney(tax)}</span></div>
-                    <div className="flex justify-between text-white font-bold pt-1 border-t border-rose-900/50"><span>Total</span><span className="font-mono text-amber-400">{fmtMoney(total)}</span></div>
+                    <DiscountBox
+                      key={`d-${adjustKey}`}
+                      subtotal={subtotal}
+                      isOwner={isOwner}
+                      blockedReason={gstOn ? 'Discount and service charge are not available on GST bills yet.' : undefined}
+                      onChange={setDiscount}
+                    />
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-400 text-xs"><span>Discount</span><span className="font-mono">-{fmtMoney(discountAmount)}</span></div>
+                    )}
+                    <ServiceChargeBox
+                      key={`s-${adjustKey}`}
+                      base={netSubtotal}
+                      disabled={gstOn}
+                      onChange={setServiceCharge}
+                    />
+                    {serviceAmount > 0 && (
+                      <div className="flex justify-between text-zinc-300 text-xs"><span>Service charge ({serviceCharge}%)</span><span className="font-mono">+{fmtMoney(serviceAmount)}</span></div>
+                    )}
+                    <div className="flex justify-between text-zinc-400 text-xs"><span>Tax ({(db.settings.taxRate * 100).toFixed(1)}%)</span><span className="font-mono">{fmtMoney(billTax)}</span></div>
+                    <div className="flex justify-between text-white font-bold pt-1 border-t border-rose-900/50"><span>Total</span><span className="font-mono text-amber-400">{fmtMoney(billTotal)}</span></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button onClick={() => settle('Cash')} disabled={busy} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg text-sm transition"><i className="fa-solid fa-money-bill mr-1" /> Cash</button>
