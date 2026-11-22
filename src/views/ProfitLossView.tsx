@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '@/store';
 import { fmtMoney, todayStr, monthStr } from '@/utils';
+import { BreakEvenCard } from '@/components/BreakEvenCard';
 
 export function ProfitLossView() {
   const { db } = useStore();
@@ -64,6 +65,8 @@ export function ProfitLossView() {
           </div>
         ))}
       </div>
+
+      <BreakEvenCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-5 space-y-4">
