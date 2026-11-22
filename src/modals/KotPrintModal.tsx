@@ -1,5 +1,6 @@
 import { Modal } from '@/components/Modal';
 import type { KotRecord } from '@/types';
+import { ReceiptPrintButton } from '@/components/ReceiptPrintButton';
 
 interface Props {
   kot: KotRecord;
@@ -66,6 +67,7 @@ export function KotPrintModal({ kot, tableName, onClose }: Props) {
         <button onClick={() => window.print()} className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold py-2 rounded-lg text-sm transition">
           <i className="fa-solid fa-print mr-2" />Print KOT
         </button>
+        <ReceiptPrintButton kind="kot" kot={kot} tableName={tableName} />
         <button onClick={onClose} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-2 rounded-lg text-sm transition">
           Close
         </button>
