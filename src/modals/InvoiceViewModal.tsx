@@ -4,6 +4,7 @@ import { fmtMoney, fmtDateTime } from '@/utils';
 import { sendInvoiceOnWhatsApp } from '@/lib/whatsapp';
 import { usePlan } from '@/lib/plan';
 import { SplitBillPanel } from '@/components/SplitBillPanel';
+import { ReceiptPrintButton } from '@/components/ReceiptPrintButton';
 import { useGstInvoices } from '@/hooks/useGst';
 import { CUSTOMER_TYPE_LABELS, EINVOICE_STATUS_LABELS, type CustomerType } from '@/lib/gst';
 import type { InvoiceGst } from '@/types';
@@ -37,10 +38,11 @@ export function InvoiceViewModal() {
   const gst = inv.gst;
 
   const actions = (
-    <div className="flex items-center gap-2 p-4 border-b border-zinc-800 no-print">
+    <div className="flex flex-wrap items-center gap-2 p-4 border-b border-zinc-800 no-print">
       <button onClick={() => window.print()} className="bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 font-medium rounded-lg py-1 px-2.5 text-xs flex items-center gap-1.5 transition">
         <i className="fa-solid fa-print" /> Print / Save PDF
       </button>
+      <ReceiptPrintButton kind="invoice" invoice={inv} settings={db.settings} />
       {hasFeature('whatsapp') && (
         <button
           onClick={() => sendInvoiceOnWhatsApp(inv, db.settings, db.customers.find(c => c.id === inv.customerId)?.phone)}
