@@ -28,6 +28,7 @@ import SetupCheckView from "@/components/SetupCheckView";
 import CounterTakingsView from "@/components/CounterTakingsView";
 import BrandImportView from "@/components/BrandImportView";
 import ItemProfitView from "@/components/ItemProfitView";
+import PegProfitView from "@/components/PegProfitView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
 import CashClosingView from "@/components/CashClosingView";
@@ -68,6 +69,7 @@ const TABS = [
   { id: "alerts", label: "Bill alerts" },
   { id: "activity", label: "Activity log" },
   { id: "itemprofit", label: "Item profit" },
+  { id: "pegprofit", label: "Peg profit" },
   { id: "rush", label: "Rush hours" },
   { id: "health", label: "Health check" },
   { id: "summary", label: "WhatsApp summary" },
@@ -312,6 +314,7 @@ export default function ExciseTabsView() {
       {current === "alerts" && <BillAlertsView />}
       {current === "activity" && <ActivityLogView />}
       {current === "itemprofit" && <ItemProfitView />}
+      {current === "pegprofit" && <PegProfitView />}
       {current === "rush" && <RushHoursView />}
       {current === "health" && <ExciseHealthCheckView />}
       {current === "summary" && <ExciseSummaryView />}
