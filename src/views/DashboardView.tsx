@@ -6,6 +6,7 @@ import { useAlerts } from '@/hooks/useAlerts';
 import { useInsights } from '@/hooks/useInsights';
 import type { AlertSeverity } from '@/hooks/useAlerts';
 import { usePlan } from '@/lib/plan';
+import { SalesTargetCard } from '@/components/SalesTargetCard';
 
 const SEVERITY_STYLES: Record<AlertSeverity, { dot: string; bg: string; border: string; icon: string }> = {
   critical: { dot: 'bg-red-500', bg: 'bg-red-950/40', border: 'border-red-800/50', icon: 'text-red-400' },
@@ -65,6 +66,8 @@ export function DashboardView() {
           </div>
         ))}
       </div>
+
+      <SalesTargetCard />
 
       {/* Smart Alerts Panel */}
       {alertsEnabled && alerts.length > 0 && (
