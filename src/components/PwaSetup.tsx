@@ -5,6 +5,7 @@ import CounterTakingsWatcher from "./CounterTakingsWatcher";
 import LoginGate from "./LoginGate";
 import PresencePing from "./PresencePing";
 import PlanSync from "./PlanSync";
+import ErrorCapture from "./ErrorCapture";
 
 const DISMISS_KEY = "pt_install_dismissed_at";
 const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -138,6 +139,7 @@ export default function PwaSetup() {
       <CounterTakingsWatcher />
       <PresencePing />
       <PlanSync />
+      <ErrorCapture />
       <LoginGate />
     </>
   );
