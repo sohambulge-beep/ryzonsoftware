@@ -30,6 +30,7 @@ import BrandImportView from "@/components/BrandImportView";
 import ItemProfitView from "@/components/ItemProfitView";
 import PegProfitView from "@/components/PegProfitView";
 import LeakageWatchView from "@/components/LeakageWatchView";
+import ReportProblemView from "@/components/ReportProblemView";
 import RushHoursView from "@/components/RushHoursView";
 import CustomerClubView from "@/components/CustomerClubView";
 import CashClosingView from "@/components/CashClosingView";
@@ -86,6 +87,7 @@ const TABS = [
   { id: "order", label: "Order on WhatsApp" },
   { id: "account", label: "My account" },
   { id: "help", label: "Help" },
+  { id: "problem", label: "Report a problem" },
   { id: "setupcheck", label: "Setup check" },
   { id: "offlinequeue", label: "Offline queue" },
   { id: "merge", label: "Two-phone merge" },
@@ -120,6 +122,7 @@ const STAFF_TABS: TabId[] = [
   "udhaar",
   "order",
   "help",
+  "problem",
   "offlinequeue",
 ];
 const FALLBACK_TAB: TabId = "sales";
@@ -332,6 +335,7 @@ export default function ExciseTabsView() {
       {current === "order" && <ExciseOrderView />}
       {current === "account" && <CustomerLoginView />}
       {current === "help" && <HelpView />}
+      {current === "problem" && <ReportProblemView />}
       {current === "setupcheck" && <SetupCheckView />}
       {current === "offlinequeue" && <OfflineQueueView />}
       {current === "merge" && <EventMergeView />}
