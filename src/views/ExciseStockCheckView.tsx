@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ExciseSettings, getExciseSettings, listExciseBrands } from "@/lib/exciseService";
 import { type StockRow, getStockSummary } from "@/lib/exciseSalesService";
+import { BarcodeScanPanel } from "@/components/BarcodeScanPanel";
+import { cameraScanSupported } from "@/lib/barcodeCamera";
+import {
+  type ScanAction,
+  type ScanState,
+  countLinks,
+  emptyScanState,
+  readBarcodeMap,
+  saveBarcodeMap,
+  scanReducer,
+} from "@/lib/barcodes";
 
 const input = "rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
@@ -38,6 +49,16 @@ export default function ExciseStockCheckView() {
   const [asOf, setAsOf] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Barcode scanning. The links between barcodes and brands are kept on this phone (see lib/barcodes.ts).
+  const [scan, setScan] = useState<ScanState>(() => emptyScanState({}, {}));
+  const [scanText, setScanText] = useState("");
+  const [pickQuery, setPickQuery] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraOk, setCameraOk] = useState(false);
+  // The newest values, so a scan that arrives from the camera never works on old numbers.
+  const latest = useRef({ counts: {} as Record<string, string>, scan: emptyScanState({}, {}), stock: [] as StockRow[] });
+  latest.current = { counts, scan, stock };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +102,8 @@ export default function ExciseStockCheckView() {
       // storage can be blocked or the draft unreadable; start empty
     }
     setDraftReady(true);
+    setScan((prev) => ({ ...prev, map: readBarcodeMap() }));
+    setCameraOk(cameraScanSupported());
   }, [load]);
 
   useEffect(() => {
@@ -104,8 +127,47 @@ export default function ExciseStockCheckView() {
 
   function onClear() {
     if (!confirm("Clear all counted numbers?")) return;
+    latest.current = { ...latest.current, counts: {} }; // so the scan code below starts from the cleared numbers
     setCounts({});
+    dispatchScan({ type: "clear-history" });
   }
+
+  // ----- barcode scanning -----
+  function dispatchScan(action: ScanAction) {
+    const cur = latest.current;
+    const brands = cur.stock.map((r) => ({ brand_id: r.brand_id, name: r.name, size_ml: r.size_ml, category: r.category }));
+    const next = scanReducer({ ...cur.scan, counts: cur.counts }, action, brands);
+    latest.current = { ...cur, counts: next.counts, scan: next };
+    setCounts(next.counts);
+    setScan(next);
+    if (next.map !== cur.scan.map) saveBarcodeMap(next.map);
+    if (next.history.length > cur.scan.history.length) {
+      try {
+        navigator.vibrate?.(40); // a short buzz so the person knows the bottle was counted
+      } catch {
+        // not every phone can vibrate
+      }
+    }
+  }
+
+  function onScanSubmit() {
+    const text = scanText;
+    setScanText("");
+    if (text.trim() === "") return;
+    dispatchScan({ type: "scan", raw: text });
+  }
+
+  function onForgetLinks() {
+    if (!confirm("Forget all barcode links on this phone? You will have to choose the brand again when you scan.")) return;
+    dispatchScan({ type: "forget" });
+  }
+
+  const brandOptions = useMemo(() => {
+    const q = pickQuery.trim().toLowerCase();
+    return stock
+      .filter((r) => q === "" || r.name.toLowerCase().includes(q))
+      .map((r) => ({ brand_id: r.brand_id, name: r.name, size_ml: r.size_ml, category: r.category }));
+  }, [stock, pickQuery]);
 
   const model = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,6 +223,27 @@ export default function ExciseStockCheckView() {
         counted it yet. This page only compares; it does not change your stock. Your numbers are saved on this phone
         until you clear them.
       </p>
+
+      <BarcodeScanPanel
+        scanText={scanText}
+        onScanText={setScanText}
+        onSubmit={onScanSubmit}
+        note={scan.note}
+        pendingCode={scan.pending}
+        pickQuery={pickQuery}
+        onPickQuery={setPickQuery}
+        brandOptions={brandOptions}
+        onPickBrand={(brandId) => dispatchScan({ type: "pick", brandId })}
+        onCancelPending={() => dispatchScan({ type: "cancel" })}
+        history={scan.history}
+        onUndo={() => dispatchScan({ type: "undo" })}
+        linkedCount={countLinks(scan.map)}
+        onForgetLinks={onForgetLinks}
+        cameraSupported={cameraOk}
+        cameraOpen={cameraOpen}
+        onToggleCamera={() => setCameraOpen((o) => !o)}
+        onCameraCode={(code) => dispatchScan({ type: "scan", raw: code })}
+      />
 
       <div className="flex flex-wrap items-end gap-3 no-print">
         <label className="block space-y-1 grow">
