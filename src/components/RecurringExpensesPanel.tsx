@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fmtMoney } from '@/utils';
+import { tr } from '@/i18n/engine';
 import {
   CHANGE_EVENT,
   WEEKDAYS,
@@ -50,8 +51,8 @@ export function RecurringExpensesPanel() {
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = Number(amount);
-    if (!title.trim()) return setError('Kharche ka naam likho.');
-    if (!(amt > 0)) return setError('Amount 0 se zyada hona chahiye.');
+    if (!title.trim()) return setError('Enter a name for the expense.');
+    if (!(amt > 0)) return setError('Amount must be more than 0.');
     setError('');
     commit([
       ...list,
@@ -74,7 +75,7 @@ export function RecurringExpensesPanel() {
 
   const toggle = (id: string) => commit(list.map(t => (t.id === id ? { ...t, active: !t.active } : t)));
   const remove = (id: string) => {
-    if (confirm('Ye auto kharcha hata dein? Pehle se bane kharche nahi hatenge.')) commit(list.filter(t => t.id !== id));
+    if (confirm(tr('Remove this auto expense? Expenses already created will not be removed.'))) commit(list.filter(t => t.id !== id));
   };
 
   const today = new Date();
@@ -84,25 +85,24 @@ export function RecurringExpensesPanel() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <i className="fa-solid fa-arrows-rotate text-amber-400" />
-          <h2 className="text-sm font-bold text-white">Auto kharche (rent, bijli, salary)</h2>
+          <h2 className="text-sm font-bold text-white">Auto expenses (rent, electricity, salary)</h2>
         </div>
         <button
           type="button"
           onClick={() => setOpen(v => !v)}
           className="bg-zinc-800 border border-zinc-700 text-zinc-200 hover:bg-zinc-700 rounded-lg py-2 px-3 text-xs"
         >
-          {open ? 'Band karo' : '+ Naya auto kharcha'}
+          {open ? 'Close' : '+ New auto expense'}
         </button>
       </div>
       <p className="text-[11px] text-zinc-500">
-        Ek baar set karo, ye kharche app khulne par apne aap record ho jaate hain. Isse net profit sahi rehta hai.
-        Ye sirf is phone pe set hote hain, aur isi phone pe app khulne par jude jaate hain.
+        Set it once and these expenses are recorded automatically when the app is opened. This keeps your net profit correct. They are set on this phone only and are added when the app is opened on this phone.
       </p>
 
       {open && (
         <form onSubmit={add} className="rounded-lg border border-zinc-700/70 p-3 space-y-3">
           <div>
-            <label className={labelClass}>Kharche ka naam</label>
+            <label className={labelClass}>Expense name</label>
             <input value={title} onChange={e => setTitle(e.target.value)} className={inputClass} placeholder="e.g. Shop rent" />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -117,7 +117,7 @@ export function RecurringExpensesPanel() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Kab kab</label>
+              <label className={labelClass}>How often</label>
               <select
                 value={frequency}
                 onChange={e => {
@@ -127,12 +127,12 @@ export function RecurringExpensesPanel() {
                 }}
                 className={inputClass}
               >
-                <option value="monthly">Har mahine</option>
-                <option value="weekly">Har hafte</option>
+                <option value="monthly">Every month</option>
+                <option value="weekly">Every week</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>{frequency === 'monthly' ? 'Kaunsi tarikh (1-28)' : 'Kaunsa din'}</label>
+              <label className={labelClass}>{frequency === 'monthly' ? 'Day of month (1-28)' : 'Day of week'}</label>
               {frequency === 'monthly' ? (
                 <select value={day} onChange={e => setDay(Number(e.target.value))} className={inputClass}>
                   {Array.from({ length: 28 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
@@ -152,14 +152,14 @@ export function RecurringExpensesPanel() {
           </div>
           {error && <div className="text-xs text-rose-300">{error}</div>}
           <button type="submit" className="bg-gradient-to-br from-amber-400 to-amber-600 text-zinc-900 font-semibold rounded-lg py-2 px-4 text-xs">
-            Save auto kharcha
+            Save auto expense
           </button>
-          <p className="text-[11px] text-zinc-500">Aaj se shuru hoga. Pichle dino ka kuch apne aap nahi judega.</p>
+          <p className="text-[11px] text-zinc-500">Starts from today. Nothing from past days is added automatically.</p>
         </form>
       )}
 
       {list.length === 0 ? (
-        <div className="text-xs text-zinc-500">Abhi koi auto kharcha set nahi hai.</div>
+        <div className="text-xs text-zinc-500">No auto expense is set yet.</div>
       ) : (
         <div className="space-y-2">
           {list.map(t => {
@@ -171,16 +171,17 @@ export function RecurringExpensesPanel() {
                   <div className="font-mono font-bold text-red-400">{fmtMoney(t.amount)}</div>
                 </div>
                 <div className="mt-1 text-zinc-400">
-                  {t.frequency === 'monthly' ? `Har mahine ${t.day} tarikh` : `Har ${WEEKDAYS[t.day]}`} • {t.category}
-                  {t.active && next ? ` • Agla: ${fmtDay(next)}` : ''}
-                  {!t.active ? ' • Roka hua' : ''}
+                  <span>{t.frequency === 'monthly' ? `Every month on day ${t.day}` : `Every ${WEEKDAYS[t.day]}`}</span>
+                  <span> • {t.category}</span>
+                  {t.active && next ? <span>{` • Next: ${fmtDay(next)}`}</span> : null}
+                  {!t.active ? <span> • Paused</span> : null}
                 </div>
                 <div className="mt-2 flex gap-3">
                   <button type="button" onClick={() => toggle(t.id)} className="text-amber-400 hover:underline">
-                    {t.active ? 'Roko' : 'Dobara shuru karo'}
+                    {t.active ? 'Pause' : 'Resume'}
                   </button>
                   <button type="button" onClick={() => remove(t.id)} className="text-rose-400 hover:underline">
-                    Hatao
+                    Remove
                   </button>
                 </div>
               </div>
