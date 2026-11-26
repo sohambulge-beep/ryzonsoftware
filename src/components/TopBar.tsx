@@ -7,6 +7,8 @@ import { AccountMenu } from '@/components/AccountMenu';
 import { QuickSearch } from '@/components/QuickSearch';
 import PremiumThemePlus from '@/components/PremiumThemePlus';
 import { RecurringExpenseRunner } from '@/components/RecurringExpenseRunner';
+import LanguageEngine from '@/components/LanguageEngine';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   dashboard: { title: 'Dashboard Overview', subtitle: 'Real-time business performance and craft tap line tracker' },
@@ -65,6 +67,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         </div>
       </div>
       <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+        <LanguageSwitcher />
         <button
           onClick={() => setSearchOpen(true)}
           title="Search (Ctrl+K)"
@@ -94,6 +97,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     <QuickSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     <PremiumThemePlus />
     <RecurringExpenseRunner />
+    <LanguageEngine />
     </>
   );
 }
