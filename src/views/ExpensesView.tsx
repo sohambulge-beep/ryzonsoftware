@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/store';
 import { fmtMoney } from '@/utils';
+import { tr } from '@/i18n/engine';
 import { RecurringExpensesPanel } from '@/components/RecurringExpensesPanel';
 
 const CATEGORIES = ['CO2 & Gas', 'Rent & Utilities', 'Staff & Wages', 'Maintenance & Line Cleaning', 'Bar Supplies', 'Licensing & Taxes', 'Other'];
@@ -69,7 +70,7 @@ export function ExpensesView() {
                   <td className="p-3 text-zinc-400 font-mono text-[11px]">{exp.paymentMethod || 'Bank'}</td>
                   <td className="p-3 text-right font-mono font-bold text-red-400">{fmtMoney(exp.amount)}</td>
                   <td className="p-3 text-center">
-                    <button onClick={() => { if (confirm('Delete this expense?')) deleteExpense(exp.id); }} className="text-zinc-500 hover:text-red-400 p-2" title="Delete">
+                    <button onClick={() => { if (confirm(tr('Delete this expense?'))) deleteExpense(exp.id); }} className="text-zinc-500 hover:text-red-400 p-2" title="Delete">
                       <i className="fa-solid fa-trash-can text-xs" />
                     </button>
                   </td>
