@@ -131,7 +131,7 @@ export function buildSupplierOrders(rows: PlanRow[], barName: string): SupplierO
     const supplierName = list[0].supplierName;
     const lines = list.map((r) => ({ name: r.tap.name, kegs: r.kegs, kegL: r.kegL }));
     const body = lines.map((l) => `- ${l.name}: ${l.kegs} keg (${l.kegL} L each)`).join("\n");
-    const hello = supplierName ? `Namaste ${supplierName},` : "Namaste,";
+    const hello = supplierName ? `Hello ${supplierName},` : "Hello,";
     const sign = barName.trim() ? `\n${barName.trim()}` : "";
     out.push({
       key,
@@ -139,7 +139,7 @@ export function buildSupplierOrders(rows: PlanRow[], barName: string): SupplierO
       phone: list[0].supplierPhone,
       lines,
       cost: r2(list.reduce((s, r) => s + r.cost, 0)),
-      message: `${hello}\nMujhe ye kegs chahiye:\n${body}\nKripya jaldi bhej dein. Dhanyavad.${sign}`,
+      message: `${hello}\nI need these kegs:\n${body}\nPlease send them as soon as possible. Thank you.${sign}`,
     });
   }
   return out;
