@@ -8,6 +8,7 @@ import {
   setTpStatus,
 } from "@/lib/exciseTpService";
 import TpImportPanel from "@/components/TpImportPanel";
+import { tr } from "@/i18n/engine";
 
 const input = "w-full rounded-md border px-3 py-2 text-sm bg-background";
 const btn = "rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50";
@@ -92,7 +93,7 @@ export default function ExciseTpView() {
   }
 
   async function onDelete(id: string) {
-    if (!confirm("Delete this TP receipt?")) return;
+    if (!confirm(tr("Delete this TP receipt?"))) return;
     try {
       await deleteTpReceipt(id);
       await load();
