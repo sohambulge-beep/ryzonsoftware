@@ -310,7 +310,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   Getting started
                 </span>
                 <span className="text-[11px] font-mono text-zinc-400">
-                  {doneCount} of {steps.length}
+                  {`${doneCount} of ${steps.length}`}
                 </span>
               </div>
               <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -447,11 +447,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
           {/* My menu: simple / full / customize, and bigger text */}
           <div className="rounded-lg border border-zinc-700/70 p-3 space-y-2.5">
-            <div className="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400/90">Apna menu</div>
+            <div className="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400/90">My menu</div>
             <div className="flex flex-wrap gap-1.5">
               {([
                 ['simple', 'Simple'],
-                ['full', 'Poora'],
+                ['full', 'Full'],
               ] as const).map(([mode, label]) => (
                 <button
                   key={mode}
@@ -476,20 +476,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   editing ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
                 }`}
               >
-                {editing ? 'Ho gaya' : 'Customize'}
+                {editing ? 'Done' : 'Customize'}
               </button>
             </div>
             {editing && (
-              <p className="text-[11px] text-zinc-400">Jis screen pe tap karoge wo chhup ya dikh jayegi. Hari aankh = dikhegi.</p>
+              <p className="text-[11px] text-zinc-400">Tap a screen to hide or show it. A green eye means it is shown.</p>
             )}
             {!editing && hidden.length > 0 && (
-              <p className="text-[11px] text-zinc-400">Chhupi hui screens upar ke Search button se khul jaati hain.</p>
+              <p className="text-[11px] text-zinc-400">Hidden screens can still be opened from the Search button at the top.</p>
             )}
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-zinc-400 mr-1">Text:</span>
+              <span className="text-[11px] text-zinc-400 mr-1">Text size:</span>
               {([
                 ['normal', 'Normal'],
-                ['large', 'Bada'],
+                ['large', 'Large'],
               ] as const).map(([size, label]) => (
                 <button
                   key={size}
