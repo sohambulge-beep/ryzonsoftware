@@ -64,16 +64,16 @@ export function SalesTargetCard() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <i className="fa-solid fa-bullseye text-amber-400" />
-          <h2 className="text-sm font-bold text-white">Aaj ka target</h2>
+          <h2 className="text-sm font-bold text-white">Today's target</h2>
           {r.streak > 0 && (
             <span className="text-[10px] font-mono rounded-full px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-300">
-              Lagataar {r.streak} din
+              {`${r.streak}-day streak`}
             </span>
           )}
         </div>
         {isOwner && !editing && (
           <button type="button" onClick={openEdit} className="text-xs text-amber-400 hover:underline">
-            {r.dailyTarget > 0 ? 'Target badlo' : 'Target set karo'}
+            {r.dailyTarget > 0 ? 'Change target' : 'Set target'}
           </button>
         )}
       </div>
@@ -82,25 +82,24 @@ export function SalesTargetCard() {
         <form onSubmit={save} className="rounded-lg border border-zinc-700/70 p-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className={labelClass}>Roz ka target (₹)</label>
+              <label className={labelClass}>Daily target (₹)</label>
               <input type="number" min={0} step={1} value={daily} onChange={e => setDaily(e.target.value)} className={inputClass} placeholder="e.g. 25000" />
             </div>
             <div>
-              <label className={labelClass}>Mahine ka target (₹, optional)</label>
-              <input type="number" min={0} step={1} value={monthly} onChange={e => setMonthly(e.target.value)} className={inputClass} placeholder="khali = roz x din" />
+              <label className={labelClass}>Monthly target (₹, optional)</label>
+              <input type="number" min={0} step={1} value={monthly} onChange={e => setMonthly(e.target.value)} className={inputClass} placeholder="blank = daily x days" />
             </div>
             <div>
-              <label className={labelClass}>Din kab shuru hota hai</label>
+              <label className={labelClass}>Day starts at</label>
               <select value={startHour} onChange={e => setStartHour(Number(e.target.value))} className={inputClass}>
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(h => (
-                  <option key={h} value={h}>{h === 0 ? 'Raat 12 baje' : `Subah ${h} baje`}</option>
+                  <option key={h} value={h}>{h === 0 ? '12 midnight' : `${h} AM`}</option>
                 ))}
               </select>
             </div>
           </div>
           <p className="text-[11px] text-zinc-500">
-            Jaise bar raat 1 baje band hota hai toh "Subah 5 baje" rakho, taaki raat 12 ke baad ki bikri usi din mein jude.
-            Ye target sirf is phone pe yaad rehta hai.
+            If your bar closes at 1 AM, choose "5 AM" so that sales after midnight count in the same day. This target is saved on this phone only.
           </p>
           <div className="flex gap-2">
             <button type="submit" className="bg-gradient-to-br from-amber-400 to-amber-600 text-zinc-900 font-semibold rounded-lg py-2 px-4 text-xs">Save</button>
@@ -112,9 +111,9 @@ export function SalesTargetCard() {
       {r.dailyTarget <= 0 ? (
         <div className="text-xs text-zinc-400">
           {isOwner
-            ? 'Roz ka sales target set karo, phir yahan dikhega aaj kitna ho gaya aur kitna baaki hai.'
-            : 'Is phone pe abhi sales target set nahi hai.'}
-          <div className="mt-1 font-mono text-zinc-300">Aaj ki bikri: {fmtMoney(r.soldToday)}</div>
+            ? 'Set a daily sales target to see here how much is done today and how much is left.'
+            : 'No sales target is set on this phone yet.'}
+          <div className="mt-1 font-mono text-zinc-300">{`Today's sales: ${fmtMoney(r.soldToday)}`}</div>
         </div>
       ) : (
         <div className="flex items-center gap-4">
@@ -135,7 +134,7 @@ export function SalesTargetCard() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="font-mono text-lg font-bold text-white">{Math.round(r.pct)}%</span>
-              <span className="text-[9px] font-mono uppercase text-zinc-400">{hit ? 'pura' : 'ho gaya'}</span>
+              <span className="text-[9px] font-mono uppercase text-zinc-400">{hit ? 'complete' : 'done'}</span>
             </div>
           </div>
           <div className="min-w-0 space-y-1 text-xs">
@@ -143,14 +142,15 @@ export function SalesTargetCard() {
               {fmtMoney(r.soldToday)} <span className="text-zinc-500 text-xs font-normal">/ {fmtMoney(r.dailyTarget)}</span>
             </div>
             {hit ? (
-              <div className="text-emerald-300 font-semibold">Aaj ka target pura ho gaya 🎉</div>
+              <div className="text-emerald-300 font-semibold">Today's target achieved 🎉</div>
             ) : (
-              <div className="text-zinc-300">Baaki: <strong className="font-mono text-white">{fmtMoney(r.remaining)}</strong></div>
+              <div className="text-zinc-300">{`Remaining: ${fmtMoney(r.remaining)}`}</div>
             )}
             {r.projected !== null && !hit && (
               <div className="text-zinc-400">
-                Is raftaar se din ke end tak lagbhag <strong className="font-mono text-zinc-200">{fmtMoney(r.projected)}</strong>
-                {r.projected >= r.dailyTarget ? ' (target pura hoga)' : ' (target se kam)'}
+                {r.projected >= r.dailyTarget
+                  ? `At this pace you will reach about ${fmtMoney(r.projected)} by the end of the day, which meets the target.`
+                  : `At this pace you will reach about ${fmtMoney(r.projected)} by the end of the day, which is below the target.`}
               </div>
             )}
           </div>
@@ -160,7 +160,7 @@ export function SalesTargetCard() {
       {r.month.target > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-zinc-400">{r.month.label} ka target</span>
+            <span className="text-zinc-400">{`${r.month.label} target`}</span>
             <span className="font-mono text-zinc-200">
               {fmtMoney(r.month.sold)} / {fmtMoney(r.month.target)}
             </span>
@@ -175,10 +175,14 @@ export function SalesTargetCard() {
             />
           </div>
           <div className="text-[11px] text-zinc-500">
-            {r.month.pct >= 100
-              ? 'Mahine ka target pura ho gaya.'
-              : `Baaki ${r.month.remainingDays} din mein roz lagbhag ${fmtMoney(r.month.neededPerDay)} chahiye.`}
-            {r.month.onTrack !== null && r.month.pct < 100 && (r.month.onTrack ? ' Raftaar theek hai.' : ' Raftaar thodi dheemi hai.')}
+            <span>
+              {r.month.pct >= 100
+                ? 'Monthly target achieved.'
+                : `About ${fmtMoney(r.month.neededPerDay)} needed per day for the remaining ${r.month.remainingDays} days.`}
+            </span>
+            {r.month.onTrack !== null && r.month.pct < 100 && (
+              <span>{r.month.onTrack ? ' You are on track.' : ' You are a little behind.'}</span>
+            )}
           </div>
         </div>
       )}
