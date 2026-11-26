@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore, buildReturn } from '@/store';
 import { fmtMoney, fmtDateTime } from '@/utils';
+import { tr } from '@/i18n/engine';
 import { readReturnLog, RETURN_EVENT, type SalesReturnEntry } from '@/lib/salesReturnLog';
 
 export function SalesReturnView() {
@@ -57,7 +58,7 @@ export function SalesReturnView() {
   const submit = () => {
     if (!selected) return;
     const ok = confirm(
-      `Return the selected items from ${selected.invoiceNo}? Stock will go back to the keg and the bill will be reduced. This cannot be undone.`
+      tr(`Return the selected items from ${selected.invoiceNo}? Stock will go back to the keg and the bill will be reduced. This cannot be undone.`)
     );
     if (!ok) return;
     const res = returnItems(selected.id, lines, reason);
@@ -77,14 +78,13 @@ export function SalesReturnView() {
           <i className="fa-solid fa-rotate-left text-rose-400" /> Sales Return / Credit Note
         </div>
         <p className="text-zinc-500 text-xs">
-          Customer ne kuch items wapas kiye? Bill chuno, jitni qty wapas aayi wo daalo. Stock keg mein wapas jayega
-          aur bill apne aap kam ho jayega. Poora bill cancel karna ho toh Invoices &amp; Sales mein Cancel Bill use karo.
+          Did the customer return some items? Choose the bill and enter the quantity that came back. The stock goes back into the keg and the bill is reduced automatically. To cancel a whole bill, use Cancel Bill in Invoices &amp; Sales.
         </p>
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search bill no. ya customer name..."
+          placeholder="Search bill no. or customer name..."
           className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-amber-500 w-full sm:w-72"
         />
         <div className="flex flex-wrap gap-2">
@@ -121,7 +121,7 @@ export function SalesReturnView() {
 
           {selected.gst && (
             <div className="rounded-lg border border-amber-700/50 bg-amber-950/30 text-amber-200 text-xs p-3">
-              Ye GST bill hai. GST bill pe yahan se return nahi hota, uske liye alag GST credit note chahiye.
+              This is a GST bill. Returns on GST bills cannot be made here; a separate GST credit note is needed.
             </div>
           )}
 
@@ -175,7 +175,7 @@ export function SalesReturnView() {
             type="text"
             value={reason}
             onChange={e => setReason(e.target.value)}
-            placeholder="Reason (jaise: galat item, kharab beer, customer ne wapas kiya)"
+            placeholder="Reason (e.g. wrong item, bad beer, customer returned it)"
             className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-amber-500 w-full"
           />
 
@@ -186,10 +186,12 @@ export function SalesReturnView() {
           )}
           {preview && !('error' in preview) && (
             <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/30 text-emerald-200 text-xs p-3">
-              {onTab
-                ? `${fmtMoney(preview.refundTotal)} customer ke udhaar (tab) se kam ho jayega.`
-                : `Customer ko ${fmtMoney(preview.refundTotal)} wapas dena hai (${selected.paymentMethod}).`}{' '}
-              Naya bill total: {fmtMoney(preview.invoice.total)}.
+              <span>
+                {onTab
+                  ? `${fmtMoney(preview.refundTotal)} will be reduced from the customer's tab.`
+                  : `Give ${fmtMoney(preview.refundTotal)} back to the customer (${selected.paymentMethod}).`}
+              </span>
+              <span>{` New bill total: ${fmtMoney(preview.invoice.total)}.`}</span>
             </div>
           )}
 
@@ -217,7 +219,7 @@ export function SalesReturnView() {
 
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
         <div className="p-3 text-xs text-zinc-400 uppercase font-mono border-b border-zinc-800">
-          Return history (is phone pe)
+          Return history (on this phone)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
