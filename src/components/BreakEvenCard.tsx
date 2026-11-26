@@ -15,11 +15,11 @@ function readStartHour(): number {
 }
 
 const WARNING_TEXT: Record<Warning, string> = {
-  no_sales: 'Abhi bikri ka data nahi hai, isliye break-even nahi nikal sakta.',
-  few_days: 'Abhi 7 din se kam ka data hai, isliye andaaza pakka nahi hai. Kuch din baad zyada sahi hoga.',
-  no_expenses: 'Kharche abhi daale hi nahi hain, isliye break-even 0 dikh raha hai. Rent, bijli, salary Expenses screen mein daalo (Auto kharche use karo).',
-  low_cost: 'Beer ka cost (cost per litre) lagbhag 0 hai, isliye margin bahut zyada dikh raha hai. Stock & Kegs mein beer ka cost check karo.',
-  low_margin: 'Beer pe margin bahut kam hai, isliye break-even nikalna mumkin nahi. Beer ka daam ya cost check karo.',
+  no_sales: 'There is no sales data yet, so break-even cannot be worked out.',
+  few_days: 'There is less than 7 days of data, so this estimate is not reliable yet. It will be more accurate after a few more days.',
+  no_expenses: 'No expenses have been added yet, so break-even shows 0. Add rent, electricity and salaries in the Expenses screen (use Auto expenses).',
+  low_cost: 'The beer cost (cost per litre) is almost 0, so the margin looks too high. Please check the beer cost in Stock & Kegs.',
+  low_margin: 'The margin on beer is very low, so break-even cannot be worked out. Please check the beer price or cost.',
 };
 
 export function BreakEvenCard() {
@@ -47,35 +47,35 @@ export function BreakEvenCard() {
     <div className="pt-glass pt-panel bg-zinc-900/70 border border-zinc-800 rounded-xl p-5 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <i className="fa-solid fa-scale-balanced text-amber-400" /> Break-even: kitni bikri chahiye
+          <i className="fa-solid fa-scale-balanced text-amber-400" /> Break-even: sales needed
         </h3>
-        <span className="text-[10px] font-mono text-zinc-500">Pichle {r.windowDays} din ke hisaab se</span>
+        <span className="text-[10px] font-mono text-zinc-500">{`Based on the last ${r.windowDays} days`}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-lg border border-zinc-700/70 p-3">
-          <div className="text-[10px] font-mono uppercase text-zinc-400">Roz ka kharcha (andaaza)</div>
+          <div className="text-[10px] font-mono uppercase text-zinc-400">Daily running cost (estimate)</div>
           <div className="font-mono text-lg font-bold text-red-400 mt-1">{fmtMoney(r.fixedPerDay)}</div>
-          <div className="text-[10px] text-zinc-500 mt-0.5">Rent, salary, bijli aadi</div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">Rent, salaries, electricity etc.</div>
         </div>
         <div className="rounded-lg border border-zinc-700/70 p-3">
-          <div className="text-[10px] font-mono uppercase text-zinc-400">Beer pe margin</div>
+          <div className="text-[10px] font-mono uppercase text-zinc-400">Margin on beer</div>
           <div className="font-mono text-lg font-bold text-emerald-400 mt-1">
             {r.margin === null ? '-' : `${(r.margin * 100).toFixed(1)}%`}
           </div>
-          <div className="text-[10px] text-zinc-500 mt-0.5">Bikri minus beer ka cost</div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">Sales minus beer cost</div>
         </div>
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-          <div className="text-[10px] font-mono uppercase text-amber-300">Break-even bikri (roz)</div>
+          <div className="text-[10px] font-mono uppercase text-amber-300">Break-even sales (daily)</div>
           <div className="font-mono text-lg font-bold text-amber-300 mt-1">{hasBE ? fmtMoney(r.breakEvenDaily as number) : '-'}</div>
-          <div className="text-[10px] text-zinc-500 mt-0.5">Isse kam bika toh nuksan</div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">Selling less than this means a loss</div>
         </div>
       </div>
 
       {hasBE && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-zinc-400">Aaj ki bikri</span>
+            <span className="text-zinc-400">Today's sales</span>
             <span className="font-mono text-zinc-200">
               {fmtMoney(r.soldToday)} / {fmtMoney(r.breakEvenDaily as number)}
             </span>
@@ -91,10 +91,10 @@ export function BreakEvenCard() {
           </div>
           <div className="text-[11px]">
             {crossed ? (
-              <span className="text-emerald-300">Aaj kharcha nikal gaya. Abhi tak lagbhag {fmtMoney(r.todayProfit ?? 0)} ka nafa.</span>
+              <span className="text-emerald-300">{`Today's costs are covered. Profit so far is about ${fmtMoney(r.todayProfit ?? 0)}.`}</span>
             ) : (
               <span className="text-zinc-400">
-                Kharcha nikalne ke liye aur <strong className="font-mono text-zinc-200">{fmtMoney((r.breakEvenDaily as number) - r.soldToday)}</strong> chahiye.
+                {`${fmtMoney((r.breakEvenDaily as number) - r.soldToday)} more is needed to cover today's costs.`}
               </span>
             )}
           </div>
@@ -104,7 +104,7 @@ export function BreakEvenCard() {
       {r.month.breakEven !== null && r.month.breakEven > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-zinc-400">{r.month.label} ka break-even</span>
+            <span className="text-zinc-400">{`${r.month.label} break-even`}</span>
             <span className="font-mono text-zinc-200">
               {fmtMoney(r.month.sold)} / {fmtMoney(r.month.breakEven)}
             </span>
@@ -120,8 +120,8 @@ export function BreakEvenCard() {
           </div>
           <div className="text-[11px] text-zinc-500">
             {(r.month.pct ?? 0) >= 100
-              ? 'Is mahine ka kharcha nikal gaya.'
-              : `Baaki ${r.month.remainingDays} din mein roz lagbhag ${fmtMoney(r.month.needPerDay ?? 0)} chahiye.`}
+              ? "This month's costs are covered."
+              : `About ${fmtMoney(r.month.needPerDay ?? 0)} needed per day for the remaining ${r.month.remainingDays} days.`}
           </div>
         </div>
       )}
@@ -137,7 +137,7 @@ export function BreakEvenCard() {
       )}
 
       <p className="text-[10px] text-zinc-500">
-        Ye andaaza hai. Isme saare kharche gine jaate hain, toh ek-baar ke bade kharche (jaise machine) break-even ko bada dikha sakte hain.
+        This is an estimate. All expenses are counted, so one-time large expenses (such as machinery) can make the break-even look higher.
       </p>
     </div>
   );
