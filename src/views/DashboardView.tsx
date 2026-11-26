@@ -52,7 +52,7 @@ export function DashboardView() {
       { label: 'Net Profit', value: fmtMoney(netProfit), class: 'text-emerald-400', sub: <><span className="text-emerald-400 font-mono">{marginPct}%</span> profit margin</> },
       { label: 'Total Expenses', value: fmtMoney(totalExp), class: 'text-red-400', sub: <><span className="text-zinc-400 font-mono">COGS: {fmtMoney(totalCogs)}</span></> },
     ] : []),
-    { label: 'Uncollected Tabs / Due', value: fmtMoney(totalDue), class: 'text-amber-300', sub: <><span className="text-amber-400">{customersWithDue} customer{customersWithDue === 1 ? '' : 's'}</span> with balance</> },
+    { label: 'Uncollected Tabs / Due', value: fmtMoney(totalDue), class: 'text-amber-300', sub: <><span className="text-amber-400">{`${customersWithDue} customer${customersWithDue === 1 ? '' : 's'}`}</span> with balance</> },
   ];
 
   return (
