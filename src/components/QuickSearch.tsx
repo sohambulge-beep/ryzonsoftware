@@ -281,7 +281,7 @@ export function QuickSearch({ open, onClose }: { open: boolean; onClose: () => v
 
         <div className="max-h-[60vh] overflow-y-auto scrollbar-thin p-2">
           {hits.length === 0 && (
-            <div className="px-3 py-8 text-center text-sm text-zinc-500">Kuch nahi mila. Naam, phone ya bill number likh ke dekho.</div>
+            <div className="px-3 py-8 text-center text-sm text-zinc-500">Nothing found. Try a name, phone number or bill number.</div>
           )}
           {hits.map((h, i) => {
             const heading = h.group !== lastGroup ? h.group : '';
@@ -325,7 +325,7 @@ export function QuickSearch({ open, onClose }: { open: boolean; onClose: () => v
         </div>
 
         <div className="px-4 py-2 text-[10px] text-zinc-500" style={{ borderTop: '1px solid rgba(255,255,255,.08)' }}>
-          Enter = kholo • ↑ ↓ = chuno • Esc = band • Ctrl+K se kahin se bhi khulta hai
+          Enter = open • ↑ ↓ = choose • Esc = close • Ctrl+K opens this from anywhere
         </div>
       </div>
     </div>,
