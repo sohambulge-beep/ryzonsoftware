@@ -60,7 +60,7 @@ export function InvoiceViewModal() {
     return (
       <Modal open={open} onClose={closeModal} title="Tax Invoice" icon="fa-solid fa-file-invoice" maxWidth="max-w-3xl">
         {actions}
-        <SplitBillPanel total={inv.total} invoiceNo={inv.invoiceNo} barName={db.settings.barName} />
+        <SplitBillPanel total={inv.total} invoiceNo={inv.invoiceNo} barName={db.settings.barName} invoice={inv} />
         <div id="print-area" className="p-6 bg-white text-zinc-900">
           <div className="text-center pb-3 border-b-2 border-zinc-800">
             <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-600">Tax Invoice</p>
@@ -210,7 +210,7 @@ export function InvoiceViewModal() {
   return (
     <Modal open={open} onClose={closeModal} title="Invoice Receipt" icon="fa-solid fa-receipt" maxWidth="max-w-md">
       {actions}
-      <SplitBillPanel total={inv.total} invoiceNo={inv.invoiceNo} barName={db.settings.barName} />
+      <SplitBillPanel total={inv.total} invoiceNo={inv.invoiceNo} barName={db.settings.barName} invoice={inv} />
       <div id="print-area" className="p-6 bg-white text-zinc-900">
         <div className="text-center pb-4 border-b border-zinc-300">
           <h2 className="text-xl font-bold uppercase tracking-wider">{db.settings.barName}</h2>
